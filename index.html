@@ -587,6 +587,74 @@
   }
 
   /* ════════════════════════════════
+     MODULE STOCK
+  ════════════════════════════════ */
+  .stock-alert-bar {
+    display: flex;
+    gap: 12px;
+    flex-wrap: wrap;
+    margin-bottom: 20px;
+  }
+  .stat-card {
+    flex: 1;
+    min-width: 140px;
+    background: white;
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 16px 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+  .stat-card .stat-num {
+    font-family: 'DM Serif Display', serif;
+    font-size: 28px;
+    color: var(--g3);
+    line-height: 1;
+  }
+  .stat-card .stat-label {
+    font-size: 11px;
+    color: var(--text3);
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+  .stock-alert-dlc {
+    background: rgba(240,165,0,0.08);
+    border: 1.5px solid rgba(240,165,0,0.3);
+  }
+  .stock-alert-dlc .stat-num { color: #9a6500; }
+  .stock-alert-low {
+    background: rgba(224,92,92,0.08);
+    border: 1.5px solid rgba(224,92,92,0.2);
+  }
+  .stock-alert-low .stat-num { color: var(--danger); }
+  .stock-adjust-input {
+    width: 100px !important;
+    display: inline-block !important;
+    margin-right: 6px;
+  }
+  .stock-produit-row {
+    display: flex; align-items: center; gap: 12px;
+    padding: 12px 16px; border-bottom: 1px solid var(--border);
+  }
+  .stock-produit-nom { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .stock-produit-nom strong { font-weight: 600; }
+  .stock-produit-lots { flex-shrink: 0; width: 80px; text-align: right; font-size: 13px; color: var(--text3); }
+  .stock-produit-qte { flex-shrink: 0; width: 100px; text-align: right; font-weight: 700; color: var(--g3); }
+  @media (max-width: 500px) {
+    .stock-produit-row { flex-wrap: wrap; gap: 4px 12px; padding: 10px 12px; }
+    .stock-produit-nom { flex: 1 1 100%; margin-bottom: 2px; }
+    .stock-produit-nom strong { font-size: 14px; }
+    .stock-produit-lots { width: auto; flex: 1; text-align: left; font-size: 12px; }
+    .stock-produit-qte { width: auto; flex-shrink: 0; font-size: 14px; }
+  }
+  @media (max-width: 600px) {
+    .stock-alert-bar { flex-direction: column; }
+    .stat-card { min-width: auto; }
+  }
+
+  /* ════════════════════════════════
      MODULE PRODUCTION
   ════════════════════════════════ */
   .prod-stepper {
@@ -1034,6 +1102,8 @@
     <div class="nav-item" onclick="showPage('ingredients')" id="nav-ingredients"><span class="icon">🥦</span> Ingrédients</div>
     <div class="nav-item" onclick="showPage('fournisseurs')" id="nav-fournisseurs"><span class="icon">🏭</span> Fournisseurs</div>
     <div class="nav-item" onclick="showPage('reception')" id="nav-reception"><span class="icon">🚚</span> Reception</div>
+    <div class="nav-item" onclick="showPage('stock')" id="nav-stock"><span class="icon">📦</span> Stock</div>
+    <div class="nav-item" onclick="showPage('tableaudebord')" id="nav-tableaudebord"><span class="icon">📈</span> Tableau de Bord</div>
     <div class="nav-item" onclick="showPage('production')" id="nav-production"><span class="icon">🔍</span> Traçabilité</div>
 <div class="nav-item" onclick="showPage('decision')" id="nav-decision">
   <span class="icon">📊</span> Décision
@@ -1082,6 +1152,18 @@
           <div class="home-card-icon">🚚</div>
           <div class="home-card-title">Reception</div>
           <div class="home-card-desc">Enregistrez les BL, lots, dates limites et controles temperature</div>
+          <div class="home-card-arrow">→</div>
+        </div>
+        <div class="home-card" id="home-card-stock" onclick="showPage('stock')">
+          <div class="home-card-icon">📦</div>
+          <div class="home-card-title">Stock</div>
+          <div class="home-card-desc">Suivez vos stocks, lots, DLC/DDM et gérez les inventaires</div>
+          <div class="home-card-arrow">→</div>
+        </div>
+        <div class="home-card" id="home-card-dashboard" onclick="showPage('tableaudebord')">
+          <div class="home-card-icon">📈</div>
+          <div class="home-card-title">Tableau de Bord</div>
+          <div class="home-card-desc">Visualisez l'évolution des prix ingrédients et coûts des recettes</div>
           <div class="home-card-arrow">→</div>
         </div>
         <div class="home-card" id="home-card-production" onclick="showPage('production')">
@@ -1738,6 +1820,8 @@ let CATEGORIES_DATA = [];      // objets complets {id, nom, actif} depuis le She
 let activeCatFilter = '';
 let RECEPTIONS = [];
 let PRODUCTIONS = [];
+let STOCK_DATA = [];
+let DASHBOARD_INITIALIZED = false;
 let receptionDraft = [];
 let recEditingBlId = '';
 let expandedReceptionBl = '';
@@ -1866,22 +1950,149 @@ const DEMO_NUTRI = (() => {
   ];
 
   const receptions = [
-    { id_bl:'BL-DEMO-001', id_ligne:'BL-DEMO-001-1', date:'2026-04-18', fournisseur:'Primeur du Sud', numero_bl:'BL-4587', type_produit:'Frais', produit:'Oignons eminces', lot:'OIG-180426', dlc_ddm_type:'DLC', dlc_ddm:'2026-04-24', temperature:'3.2', temperature_cible:'<= 4°C', conformite:'Conforme', action:'', regle:'Non-regle' },
-    { id_bl:'BL-DEMO-001', id_ligne:'BL-DEMO-001-2', date:'2026-04-18', fournisseur:'Primeur du Sud', numero_bl:'BL-4587', type_produit:'Frais', produit:'Tomate concassee', lot:'TOM-180426', dlc_ddm_type:'DDM', dlc_ddm:'2027-02-10', temperature:'5.1', temperature_cible:'<= 4°C', conformite:'Non conforme', action:'Refus partiel et photo transmise fournisseur', regle:'Non-regle' },
-    { id_bl:'BL-DEMO-002', id_ligne:'BL-DEMO-002-1', date:'2026-04-19', fournisseur:'Metro Marseille', numero_bl:'BL-7821', type_produit:'Surgele', produit:'Poulet roti eminces', lot:'POU-0426-S2', dlc_ddm_type:'DLC', dlc_ddm:'2026-05-08', temperature:'-18.4', temperature_cible:'<= -16°C', conformite:'Conforme', action:'', regle:'Non-regle' }
+    { id_bl:'BL-DEMO-000', id_ligne:'BL-DEMO-000-1', date:'2025-09-08', fournisseur:'Maison Italiana', numero_bl:'BL-4000', type_produit:'Surgele', produit:'Parmesan rape', lot:'PAR-250908A', dlc_ddm_type:'DDM', dlc_ddm:'2026-05-05', quantite:18.43, unite:'kg', temperature:'-16.1', temperature_cible:'≤ -16°C', conformite:'Conforme', action:'', regle:'Non-regle', prix:18.14 },
+    { id_bl:'BL-DEMO-001', id_ligne:'BL-DEMO-001-1', date:'2025-09-01', fournisseur:'Primeur du Sud', numero_bl:'BL-4001', type_produit:'Surgele', produit:'Oignons eminces', lot:'OIG-250901C', dlc_ddm_type:'DLC', dlc_ddm:'2025-09-11', quantite:6.16, unite:'kg', temperature:'-17.0', temperature_cible:'≤ -16°C', conformite:'Conforme', action:'', regle:'Non-regle', prix:1.89 },
+    { id_bl:'BL-DEMO-002', id_ligne:'BL-DEMO-002-1', date:'2025-09-05', fournisseur:'Laiterie du Verdon', numero_bl:'BL-4002', type_produit:'Sec', produit:'Creme liquide 30%', lot:'CRE-250905A', dlc_ddm_type:'DLC', dlc_ddm:'2025-09-17', quantite:26.25, unite:'L', temperature:'', temperature_cible:'', conformite:'Conforme', action:'', regle:'Non-regle', prix:4.43 },
+    { id_bl:'BL-DEMO-003', id_ligne:'BL-DEMO-003-1', date:'2025-10-25', fournisseur:'Laiterie du Verdon', numero_bl:'BL-4003', type_produit:'Frais', produit:'Creme liquide 30%', lot:'CRE-251025C', dlc_ddm_type:'DLC', dlc_ddm:'2025-11-10', quantite:8.94, unite:'L', temperature:'2.1', temperature_cible:'≤ 4°C', conformite:'Conforme', action:'', regle:'Non-regle', prix:4.18 },
+    { id_bl:'BL-DEMO-004', id_ligne:'BL-DEMO-004-2', date:'2025-10-25', fournisseur:'Laiterie du Verdon', numero_bl:'BL-4003', type_produit:'Surgele', produit:'Beurre doux', lot:'BEU-251025B', dlc_ddm_type:'DLC', dlc_ddm:'2025-11-13', quantite:18.51, unite:'kg', temperature:'-19.3', temperature_cible:'≤ -16°C', conformite:'Conforme', action:'', regle:'Non-regle', prix:8.94 },
+    { id_bl:'BL-DEMO-005', id_ligne:'BL-DEMO-005-1', date:'2025-10-05', fournisseur:'Laiterie du Verdon', numero_bl:'BL-4005', type_produit:'Sec', produit:'Creme liquide 30%', lot:'CRE-251005A', dlc_ddm_type:'DLC', dlc_ddm:'2025-10-14', quantite:13.6, unite:'L', temperature:'', temperature_cible:'', conformite:'Conforme', action:'', regle:'Non-regle', prix:4.45 },
+    { id_bl:'BL-DEMO-006', id_ligne:'BL-DEMO-006-2', date:'2025-10-05', fournisseur:'Laiterie du Verdon', numero_bl:'BL-4005', type_produit:'Frais', produit:'Beurre doux', lot:'BEU-251005D', dlc_ddm_type:'DLC', dlc_ddm:'2025-10-14', quantite:19.08, unite:'kg', temperature:'1.0', temperature_cible:'≤ 4°C', conformite:'Conforme', action:'', regle:'Non-regle', prix:8.76 },
+    { id_bl:'BL-DEMO-007', id_ligne:'BL-DEMO-007-1', date:'2025-10-09', fournisseur:'Moulin des Alpilles', numero_bl:'BL-4007', type_produit:'Sec', produit:'Farine de ble', lot:'FAR-251009D', dlc_ddm_type:'DDM', dlc_ddm:'2026-01-19', quantite:2.57, unite:'kg', temperature:'', temperature_cible:'', conformite:'Conforme', action:'', regle:'Non-regle', prix:1.44 },
+    { id_bl:'BL-DEMO-008', id_ligne:'BL-DEMO-008-1', date:'2025-10-22', fournisseur:'Maison Italiana', numero_bl:'BL-4008', type_produit:'Frais', produit:'Parmesan rape', lot:'PAR-251022C', dlc_ddm_type:'DDM', dlc_ddm:'2026-01-20', quantite:28.13, unite:'kg', temperature:'1.6', temperature_cible:'≤ 4°C', conformite:'Non conforme', action:'Refus partiel', regle:'Non-regle', prix:19.48 },
+    { id_bl:'BL-DEMO-009', id_ligne:'BL-DEMO-009-1', date:'2025-11-03', fournisseur:'Metro Marseille', numero_bl:'BL-4009', type_produit:'Sec', produit:'Poulet roti eminces', lot:'POU-251103A', dlc_ddm_type:'DLC', dlc_ddm:'2025-11-23', quantite:22.22, unite:'kg', temperature:'', temperature_cible:'', conformite:'Conforme', action:'', regle:'Non-regle', prix:12.18 },
+    { id_bl:'BL-DEMO-010', id_ligne:'BL-DEMO-010-2', date:'2025-11-03', fournisseur:'Metro Marseille', numero_bl:'BL-4009', type_produit:'Surgele', produit:'Quinoa cuit', lot:'QUI-251103B', dlc_ddm_type:'DDM', dlc_ddm:'2026-04-06', quantite:14.05, unite:'kg', temperature:'-18.6', temperature_cible:'≤ -16°C', conformite:'Conforme', action:'', regle:'Non-regle', prix:4.76 },
+    { id_bl:'BL-DEMO-011', id_ligne:'BL-DEMO-011-3', date:'2025-11-03', fournisseur:'Metro Marseille', numero_bl:'BL-4009', type_produit:'Surgele', produit:'Noisettes concassees', lot:'NOI-251103D', dlc_ddm_type:'DDM', dlc_ddm:'2026-05-31', quantite:12.84, unite:'kg', temperature:'-19.4', temperature_cible:'≤ -16°C', conformite:'Conforme', action:'', regle:'Non-regle', prix:12.41 },
+    { id_bl:'BL-DEMO-012', id_ligne:'BL-DEMO-012-1', date:'2025-11-14', fournisseur:'Primeur du Sud', numero_bl:'BL-4012', type_produit:'Surgele', produit:'Oignons eminces', lot:'OIG-251114D', dlc_ddm_type:'DLC', dlc_ddm:'2025-11-23', quantite:28.45, unite:'kg', temperature:'-19.1', temperature_cible:'≤ -16°C', conformite:'Non conforme', action:'Refus partiel', regle:'Non-regle', prix:1.82 },
+    { id_bl:'BL-DEMO-013', id_ligne:'BL-DEMO-013-1', date:'2025-11-05', fournisseur:'Metro Marseille', numero_bl:'BL-4013', type_produit:'Surgele', produit:'Poulet roti eminces', lot:'POU-251105D', dlc_ddm_type:'DLC', dlc_ddm:'2025-11-14', quantite:14.99, unite:'kg', temperature:'-17.8', temperature_cible:'≤ -16°C', conformite:'Conforme', action:'', regle:'Non-regle', prix:12.4 },
+    { id_bl:'BL-DEMO-014', id_ligne:'BL-DEMO-014-1', date:'2025-12-05', fournisseur:'Moulin des Alpilles', numero_bl:'BL-4014', type_produit:'Sec', produit:'Farine de ble', lot:'FAR-251205C', dlc_ddm_type:'DDM', dlc_ddm:'2026-05-10', quantite:25.16, unite:'kg', temperature:'', temperature_cible:'', conformite:'Conforme', action:'', regle:'Non-regle', prix:1.52 },
+    { id_bl:'BL-DEMO-015', id_ligne:'BL-DEMO-015-1', date:'2025-12-29', fournisseur:'Maison Italiana', numero_bl:'BL-4015', type_produit:'Frais', produit:'Parmesan rape', lot:'PAR-251229D', dlc_ddm_type:'DDM', dlc_ddm:'2026-07-03', quantite:22.98, unite:'kg', temperature:'4.2', temperature_cible:'≤ 4°C', conformite:'Conforme', action:'', regle:'Non-regle', prix:20.1 },
+    { id_bl:'BL-DEMO-016', id_ligne:'BL-DEMO-016-1', date:'2025-12-17', fournisseur:'Laiterie du Verdon', numero_bl:'BL-4016', type_produit:'Surgele', produit:'Creme liquide 30%', lot:'CRE-251217B', dlc_ddm_type:'DLC', dlc_ddm:'2025-12-25', quantite:3.65, unite:'L', temperature:'-19.9', temperature_cible:'≤ -16°C', conformite:'Conforme', action:'', regle:'Non-regle', prix:4.62 },
+    { id_bl:'BL-DEMO-017', id_ligne:'BL-DEMO-017-1', date:'2026-01-30', fournisseur:'Primeur du Sud', numero_bl:'BL-4017', type_produit:'Frais', produit:'Oignons eminces', lot:'OIG-260130A', dlc_ddm_type:'DLC', dlc_ddm:'2026-02-06', quantite:15.15, unite:'kg', temperature:'3.0', temperature_cible:'≤ 4°C', conformite:'Conforme', action:'', regle:'Non-regle', prix:2.02 },
+    { id_bl:'BL-DEMO-018', id_ligne:'BL-DEMO-018-1', date:'2026-01-28', fournisseur:'Laiterie du Verdon', numero_bl:'BL-4018', type_produit:'Sec', produit:'Creme liquide 30%', lot:'CRE-260128C', dlc_ddm_type:'DLC', dlc_ddm:'2026-02-05', quantite:18.59, unite:'L', temperature:'', temperature_cible:'', conformite:'Conforme', action:'', regle:'Non-regle', prix:4.37 },
+    { id_bl:'BL-DEMO-019', id_ligne:'BL-DEMO-019-2', date:'2026-01-28', fournisseur:'Laiterie du Verdon', numero_bl:'BL-4018', type_produit:'Sec', produit:'Beurre doux', lot:'BEU-260128D', dlc_ddm_type:'DLC', dlc_ddm:'2026-02-15', quantite:26.62, unite:'kg', temperature:'', temperature_cible:'', conformite:'Conforme', action:'', regle:'Non-regle', prix:8.78 },
+    { id_bl:'BL-DEMO-020', id_ligne:'BL-DEMO-020-1', date:'2026-01-06', fournisseur:'Metro Marseille', numero_bl:'BL-4020', type_produit:'Sec', produit:'Poulet roti eminces', lot:'POU-260106A', dlc_ddm_type:'DLC', dlc_ddm:'2026-01-18', quantite:7.14, unite:'kg', temperature:'', temperature_cible:'', conformite:'Conforme', action:'', regle:'Non-regle', prix:13.09 },
+    { id_bl:'BL-DEMO-021', id_ligne:'BL-DEMO-021-2', date:'2026-01-06', fournisseur:'Metro Marseille', numero_bl:'BL-4020', type_produit:'Surgele', produit:'Quinoa cuit', lot:'QUI-260106B', dlc_ddm_type:'DDM', dlc_ddm:'2026-03-10', quantite:5.25, unite:'kg', temperature:'-16.7', temperature_cible:'≤ -16°C', conformite:'Conforme', action:'', regle:'Non-regle', prix:4.85 },
+    { id_bl:'BL-DEMO-022', id_ligne:'BL-DEMO-022-3', date:'2026-01-06', fournisseur:'Metro Marseille', numero_bl:'BL-4020', type_produit:'Frais', produit:'Noisettes concassees', lot:'NOI-260106C', dlc_ddm_type:'DDM', dlc_ddm:'2026-05-04', quantite:16.35, unite:'kg', temperature:'3.1', temperature_cible:'≤ 4°C', conformite:'Conforme', action:'', regle:'Non-regle', prix:13.1 },
+    { id_bl:'BL-DEMO-023', id_ligne:'BL-DEMO-023-1', date:'2026-02-05', fournisseur:'Moulin des Alpilles', numero_bl:'BL-4023', type_produit:'Surgele', produit:'Farine de ble', lot:'FAR-260205B', dlc_ddm_type:'DDM', dlc_ddm:'2026-09-04', quantite:6.87, unite:'kg', temperature:'-17.5', temperature_cible:'≤ -16°C', conformite:'Conforme', action:'', regle:'Non-regle', prix:1.53 },
+    { id_bl:'BL-DEMO-024', id_ligne:'BL-DEMO-024-1', date:'2026-02-21', fournisseur:'Moulin des Alpilles', numero_bl:'BL-4024', type_produit:'Frais', produit:'Farine de ble', lot:'FAR-260221D', dlc_ddm_type:'DDM', dlc_ddm:'2026-06-29', quantite:5.77, unite:'kg', temperature:'2.6', temperature_cible:'≤ 4°C', conformite:'Conforme', action:'', regle:'Non-regle', prix:1.57 },
+    { id_bl:'BL-DEMO-025', id_ligne:'BL-DEMO-025-1', date:'2026-02-18', fournisseur:'Metro Marseille', numero_bl:'BL-4025', type_produit:'Frais', produit:'Poulet roti eminces', lot:'POU-260218A', dlc_ddm_type:'DLC', dlc_ddm:'2026-03-08', quantite:27.3, unite:'kg', temperature:'2.5', temperature_cible:'≤ 4°C', conformite:'Conforme', action:'', regle:'Non-regle', prix:12.62 },
+    { id_bl:'BL-DEMO-026', id_ligne:'BL-DEMO-026-2', date:'2026-02-18', fournisseur:'Metro Marseille', numero_bl:'BL-4025', type_produit:'Sec', produit:'Quinoa cuit', lot:'QUI-260218B', dlc_ddm_type:'DDM', dlc_ddm:'2026-08-26', quantite:10.79, unite:'kg', temperature:'', temperature_cible:'', conformite:'Conforme', action:'', regle:'Non-regle', prix:5.01 },
+    { id_bl:'BL-DEMO-027', id_ligne:'BL-DEMO-027-1', date:'2026-02-20', fournisseur:'Maison Italiana', numero_bl:'BL-4027', type_produit:'Frais', produit:'Parmesan rape', lot:'PAR-260220B', dlc_ddm_type:'DDM', dlc_ddm:'2026-09-26', quantite:26.79, unite:'kg', temperature:'3.7', temperature_cible:'≤ 4°C', conformite:'Conforme', action:'', regle:'Non-regle', prix:20.67 },
+    { id_bl:'BL-DEMO-028', id_ligne:'BL-DEMO-028-2', date:'2026-02-20', fournisseur:'Maison Italiana', numero_bl:'BL-4027', type_produit:'Sec', produit:'Tomate concassee', lot:'TOM-260220C', dlc_ddm_type:'DDM', dlc_ddm:'2026-08-04', quantite:26.55, unite:'kg', temperature:'', temperature_cible:'', conformite:'Conforme', action:'', regle:'Non-regle', prix:2.24 },
+    { id_bl:'BL-DEMO-029', id_ligne:'BL-DEMO-029-3', date:'2026-02-20', fournisseur:'Maison Italiana', numero_bl:'BL-4027', type_produit:'Surgele', produit:'Huile d olive', lot:'HUI-260220D', dlc_ddm_type:'DDM', dlc_ddm:'2026-09-14', quantite:26.94, unite:'L', temperature:'-19.2', temperature_cible:'≤ -16°C', conformite:'Conforme', action:'', regle:'Non-regle', prix:8.86 },
+    { id_bl:'BL-DEMO-030', id_ligne:'BL-DEMO-030-1', date:'2026-03-22', fournisseur:'Laiterie du Verdon', numero_bl:'BL-4030', type_produit:'Surgele', produit:'Creme liquide 30%', lot:'CRE-260322D', dlc_ddm_type:'DLC', dlc_ddm:'2026-04-02', quantite:4.64, unite:'L', temperature:'-17.4', temperature_cible:'≤ -16°C', conformite:'Conforme', action:'', regle:'Non-regle', prix:4.53 },
+    { id_bl:'BL-DEMO-031', id_ligne:'BL-DEMO-031-1', date:'2026-03-05', fournisseur:'Maison Italiana', numero_bl:'BL-4031', type_produit:'Frais', produit:'Parmesan rape', lot:'PAR-260305B', dlc_ddm_type:'DDM', dlc_ddm:'2026-07-04', quantite:10.85, unite:'kg', temperature:'3.5', temperature_cible:'≤ 4°C', conformite:'Conforme', action:'', regle:'Non-regle', prix:20.01 },
+    { id_bl:'BL-DEMO-032', id_ligne:'BL-DEMO-032-1', date:'2026-03-23', fournisseur:'Primeur du Sud', numero_bl:'BL-4032', type_produit:'Sec', produit:'Oignons eminces', lot:'OIG-260323D', dlc_ddm_type:'DLC', dlc_ddm:'2026-04-08', quantite:28.33, unite:'kg', temperature:'', temperature_cible:'', conformite:'Conforme', action:'', regle:'Non-regle', prix:2.03 },
+    { id_bl:'BL-DEMO-033', id_ligne:'BL-DEMO-033-1', date:'2026-04-19', fournisseur:'Primeur du Sud', numero_bl:'BL-4033', type_produit:'Surgele', produit:'Oignons eminces', lot:'OIG-260419D', dlc_ddm_type:'DLC', dlc_ddm:'2026-05-04', quantite:18.88, unite:'kg', temperature:'-17.0', temperature_cible:'≤ -16°C', conformite:'Non conforme', action:'Refus partiel', regle:'Non-regle', prix:2.05 },
+    { id_bl:'BL-DEMO-034', id_ligne:'BL-DEMO-034-1', date:'2026-04-06', fournisseur:'Metro Marseille', numero_bl:'BL-4034', type_produit:'Frais', produit:'Poulet roti eminces', lot:'POU-260406A', dlc_ddm_type:'DLC', dlc_ddm:'2026-04-18', quantite:27.9, unite:'kg', temperature:'2.0', temperature_cible:'≤ 4°C', conformite:'Conforme', action:'', regle:'Non-regle', prix:12.83 },
+    { id_bl:'BL-DEMO-035', id_ligne:'BL-DEMO-035-2', date:'2026-04-06', fournisseur:'Metro Marseille', numero_bl:'BL-4034', type_produit:'Sec', produit:'Quinoa cuit', lot:'QUI-260406A', dlc_ddm_type:'DDM', dlc_ddm:'2026-11-03', quantite:23.76, unite:'kg', temperature:'', temperature_cible:'', conformite:'Conforme', action:'', regle:'Non-regle', prix:4.8 },
+    { id_bl:'BL-DEMO-036', id_ligne:'BL-DEMO-036-3', date:'2026-04-06', fournisseur:'Metro Marseille', numero_bl:'BL-4034', type_produit:'Surgele', produit:'Noisettes concassees', lot:'NOI-260406C', dlc_ddm_type:'DDM', dlc_ddm:'2026-08-28', quantite:28.35, unite:'kg', temperature:'-16.1', temperature_cible:'≤ -16°C', conformite:'Conforme', action:'', regle:'Non-regle', prix:13.51 },
+    { id_bl:'BL-DEMO-037', id_ligne:'BL-DEMO-037-1', date:'2026-04-10', fournisseur:'Laiterie du Verdon', numero_bl:'BL-4037', type_produit:'Frais', produit:'Creme liquide 30%', lot:'CRE-260410B', dlc_ddm_type:'DLC', dlc_ddm:'2026-04-30', quantite:27.01, unite:'L', temperature:'2.4', temperature_cible:'≤ 4°C', conformite:'Conforme', action:'', regle:'Non-regle', prix:4.29 },
+    { id_bl:'BL-DEMO-038', id_ligne:'BL-DEMO-038-2', date:'2026-04-10', fournisseur:'Laiterie du Verdon', numero_bl:'BL-4037', type_produit:'Surgele', produit:'Beurre doux', lot:'BEU-260410D', dlc_ddm_type:'DLC', dlc_ddm:'2026-04-17', quantite:24.88, unite:'kg', temperature:'-19.8', temperature_cible:'≤ -16°C', conformite:'Conforme', action:'', regle:'Non-regle', prix:9.78 },
+    { id_bl:'BL-DEMO-039', id_ligne:'BL-DEMO-039-1', date:'2026-05-07', fournisseur:'Laiterie du Verdon', numero_bl:'BL-4039', type_produit:'Surgele', produit:'Creme liquide 30%', lot:'CRE-260507B', dlc_ddm_type:'DLC', dlc_ddm:'2026-05-14', quantite:3.57, unite:'L', temperature:'-17.8', temperature_cible:'≤ -16°C', conformite:'Conforme', action:'', regle:'Non-regle', prix:4.32 },
+    { id_bl:'BL-DEMO-040', id_ligne:'BL-DEMO-040-1', date:'2026-05-30', fournisseur:'Laiterie du Verdon', numero_bl:'BL-4040', type_produit:'Surgele', produit:'Creme liquide 30%', lot:'CRE-260530A', dlc_ddm_type:'DLC', dlc_ddm:'2026-06-15', quantite:8.21, unite:'L', temperature:'-18.8', temperature_cible:'≤ -16°C', conformite:'Conforme', action:'', regle:'Non-regle', prix:4.43 },
+    { id_bl:'BL-DEMO-041', id_ligne:'BL-DEMO-041-1', date:'2026-05-21', fournisseur:'Metro Marseille', numero_bl:'BL-4041', type_produit:'Surgele', produit:'Poulet roti eminces', lot:'POU-260521C', dlc_ddm_type:'DLC', dlc_ddm:'2026-05-31', quantite:2.38, unite:'kg', temperature:'-16.3', temperature_cible:'≤ -16°C', conformite:'Conforme', action:'', regle:'Non-regle', prix:12.4 },
+    { id_bl:'BL-DEMO-042', id_ligne:'BL-DEMO-042-1', date:'2026-05-09', fournisseur:'Metro Marseille', numero_bl:'BL-4042', type_produit:'Sec', produit:'Poulet roti eminces', lot:'POU-260509D', dlc_ddm_type:'DLC', dlc_ddm:'2026-05-27', quantite:8.77, unite:'kg', temperature:'', temperature_cible:'', conformite:'Conforme', action:'', regle:'Non-regle', prix:11.99 },
+    { id_bl:'BL-DEMO-043', id_ligne:'BL-DEMO-043-2', date:'2026-05-09', fournisseur:'Metro Marseille', numero_bl:'BL-4042', type_produit:'Frais', produit:'Quinoa cuit', lot:'QUI-260509A', dlc_ddm_type:'DDM', dlc_ddm:'2026-10-14', quantite:3.93, unite:'kg', temperature:'2.9', temperature_cible:'≤ 4°C', conformite:'Conforme', action:'', regle:'Non-regle', prix:4.86 },
+    { id_bl:'BL-DEMO-044', id_ligne:'BL-DEMO-044-1', date:'2026-06-29', fournisseur:'Maison Italiana', numero_bl:'BL-4044', type_produit:'Sec', produit:'Parmesan rape', lot:'PAR-260629A', dlc_ddm_type:'DDM', dlc_ddm:'2026-10-17', quantite:8.85, unite:'kg', temperature:'', temperature_cible:'', conformite:'Conforme', action:'', regle:'Non-regle', prix:20.51 },
+    { id_bl:'BL-DEMO-045', id_ligne:'BL-DEMO-045-1', date:'2026-06-14', fournisseur:'Maison Italiana', numero_bl:'BL-4045', type_produit:'Frais', produit:'Parmesan rape', lot:'PAR-260614C', dlc_ddm_type:'DDM', dlc_ddm:'2027-02-02', quantite:21.87, unite:'kg', temperature:'2.5', temperature_cible:'≤ 4°C', conformite:'Conforme', action:'', regle:'Non-regle', prix:18.53 },
+    { id_bl:'BL-DEMO-046', id_ligne:'BL-DEMO-046-2', date:'2026-06-14', fournisseur:'Maison Italiana', numero_bl:'BL-4045', type_produit:'Surgele', produit:'Tomate concassee', lot:'TOM-260614D', dlc_ddm_type:'DDM', dlc_ddm:'2026-10-11', quantite:5, unite:'kg', temperature:'-17.5', temperature_cible:'≤ -16°C', conformite:'Conforme', action:'', regle:'Non-regle', prix:2.33 },
+    { id_bl:'BL-DEMO-047', id_ligne:'BL-DEMO-047-3', date:'2026-06-14', fournisseur:'Maison Italiana', numero_bl:'BL-4045', type_produit:'Surgele', produit:'Huile d olive', lot:'HUI-260614B', dlc_ddm_type:'DDM', dlc_ddm:'2027-01-18', quantite:2.05, unite:'L', temperature:'-17.3', temperature_cible:'≤ -16°C', conformite:'Conforme', action:'', regle:'Non-regle', prix:8.52 },
+    { id_bl:'BL-DEMO-048', id_ligne:'BL-DEMO-048-1', date:'2026-06-06', fournisseur:'Moulin des Alpilles', numero_bl:'BL-4048', type_produit:'Surgele', produit:'Farine de ble', lot:'FAR-260606A', dlc_ddm_type:'DDM', dlc_ddm:'2027-01-18', quantite:3.16, unite:'kg', temperature:'-18.3', temperature_cible:'≤ -16°C', conformite:'Conforme', action:'', regle:'Non-regle', prix:1.52 },
+    { id_bl:'BL-DEMO-049', id_ligne:'BL-DEMO-049-1', date:'2026-07-08', fournisseur:'Maison Italiana', numero_bl:'BL-4049', type_produit:'Surgele', produit:'Parmesan rape', lot:'PAR-260708B', dlc_ddm_type:'DDM', dlc_ddm:'2027-01-02', quantite:19.08, unite:'kg', temperature:'-19.0', temperature_cible:'≤ -16°C', conformite:'Conforme', action:'', regle:'Non-regle', prix:20.08 },
+    { id_bl:'BL-DEMO-050', id_ligne:'BL-DEMO-050-2', date:'2026-07-08', fournisseur:'Maison Italiana', numero_bl:'BL-4049', type_produit:'Surgele', produit:'Tomate concassee', lot:'TOM-260708A', dlc_ddm_type:'DDM', dlc_ddm:'2027-01-16', quantite:14.04, unite:'kg', temperature:'-19.4', temperature_cible:'≤ -16°C', conformite:'Conforme', action:'', regle:'Non-regle', prix:2.31 },
+    { id_bl:'BL-DEMO-051', id_ligne:'BL-DEMO-051-1', date:'2026-07-14', fournisseur:'Laiterie du Verdon', numero_bl:'BL-4051', type_produit:'Frais', produit:'Creme liquide 30%', lot:'CRE-260714A', dlc_ddm_type:'DLC', dlc_ddm:'2026-07-31', quantite:7.76, unite:'L', temperature:'2.3', temperature_cible:'≤ 4°C', conformite:'Conforme', action:'', regle:'Non-regle', prix:4.47 },
+    { id_bl:'BL-DEMO-052', id_ligne:'BL-DEMO-052-1', date:'2026-07-23', fournisseur:'Maison Italiana', numero_bl:'BL-4052', type_produit:'Frais', produit:'Parmesan rape', lot:'PAR-260723D', dlc_ddm_type:'DDM', dlc_ddm:'2027-03-17', quantite:27.35, unite:'kg', temperature:'3.7', temperature_cible:'≤ 4°C', conformite:'Conforme', action:'', regle:'Non-regle', prix:19.49 },
+    { id_bl:'BL-DEMO-053', id_ligne:'BL-DEMO-053-2', date:'2026-07-23', fournisseur:'Maison Italiana', numero_bl:'BL-4052', type_produit:'Sec', produit:'Tomate concassee', lot:'TOM-260723C', dlc_ddm_type:'DDM', dlc_ddm:'2026-10-22', quantite:7, unite:'kg', temperature:'', temperature_cible:'', conformite:'Conforme', action:'', regle:'Non-regle', prix:2.28 },
+    { id_bl:'BL-DEMO-054', id_ligne:'BL-DEMO-054-3', date:'2026-07-23', fournisseur:'Maison Italiana', numero_bl:'BL-4052', type_produit:'Surgele', produit:'Huile d olive', lot:'HUI-260723A', dlc_ddm_type:'DDM', dlc_ddm:'2027-01-30', quantite:3.81, unite:'L', temperature:'-17.6', temperature_cible:'≤ -16°C', conformite:'Conforme', action:'', regle:'Non-regle', prix:7.89 },
+    { id_bl:'BL-DEMO-055', id_ligne:'BL-DEMO-055-1', date:'2026-07-30', fournisseur:'Metro Marseille', numero_bl:'BL-4055', type_produit:'Surgele', produit:'Poulet roti eminces', lot:'POU-260730A', dlc_ddm_type:'DLC', dlc_ddm:'2026-08-17', quantite:23.18, unite:'kg', temperature:'-18.0', temperature_cible:'≤ -16°C', conformite:'Conforme', action:'', regle:'Non-regle', prix:11.73 },
+    { id_bl:'BL-DEMO-056', id_ligne:'BL-DEMO-056-2', date:'2026-07-30', fournisseur:'Metro Marseille', numero_bl:'BL-4055', type_produit:'Surgele', produit:'Quinoa cuit', lot:'QUI-260730B', dlc_ddm_type:'DDM', dlc_ddm:'2027-03-16', quantite:16.53, unite:'kg', temperature:'-19.9', temperature_cible:'≤ -16°C', conformite:'Conforme', action:'', regle:'Non-regle', prix:5 },
+    { id_bl:'BL-DEMO-057', id_ligne:'BL-DEMO-057-3', date:'2026-07-30', fournisseur:'Metro Marseille', numero_bl:'BL-4055', type_produit:'Surgele', produit:'Noisettes concassees', lot:'NOI-260730B', dlc_ddm_type:'DDM', dlc_ddm:'2026-11-01', quantite:18.08, unite:'kg', temperature:'-17.6', temperature_cible:'≤ -16°C', conformite:'Conforme', action:'', regle:'Non-regle', prix:12.95 },
+    { id_bl:'BL-DEMO-058', id_ligne:'BL-DEMO-058-1', date:'2026-08-01', fournisseur:'Moulin des Alpilles', numero_bl:'BL-4058', type_produit:'Surgele', produit:'Farine de ble', lot:'FAR-260801A', dlc_ddm_type:'DDM', dlc_ddm:'2026-10-06', quantite:14.02, unite:'kg', temperature:'-17.9', temperature_cible:'≤ -16°C', conformite:'Conforme', action:'', regle:'Non-regle', prix:1.37 },
+    { id_bl:'BL-DEMO-059', id_ligne:'BL-DEMO-059-1', date:'2026-08-07', fournisseur:'Primeur du Sud', numero_bl:'BL-4059', type_produit:'Surgele', produit:'Oignons eminces', lot:'OIG-260807D', dlc_ddm_type:'DLC', dlc_ddm:'2026-08-25', quantite:4.25, unite:'kg', temperature:'-17.7', temperature_cible:'≤ -16°C', conformite:'Conforme', action:'', regle:'Non-regle', prix:1.95 },
+    { id_bl:'BL-DEMO-060', id_ligne:'BL-DEMO-060-1', date:'2026-08-27', fournisseur:'Primeur du Sud', numero_bl:'BL-4060', type_produit:'Frais', produit:'Oignons eminces', lot:'OIG-260827B', dlc_ddm_type:'DLC', dlc_ddm:'2026-09-15', quantite:4.71, unite:'kg', temperature:'1.7', temperature_cible:'≤ 4°C', conformite:'Conforme', action:'', regle:'Non-regle', prix:1.89 },
+    { id_bl:'BL-DEMO-061', id_ligne:'BL-DEMO-061-1', date:'2026-08-21', fournisseur:'Laiterie du Verdon', numero_bl:'BL-4061', type_produit:'Frais', produit:'Creme liquide 30%', lot:'CRE-260821B', dlc_ddm_type:'DLC', dlc_ddm:'2026-09-09', quantite:4.45, unite:'L', temperature:'2.4', temperature_cible:'≤ 4°C', conformite:'Conforme', action:'', regle:'Non-regle', prix:4.34 },
+    { id_bl:'BL-DEMO-062', id_ligne:'BL-DEMO-062-2', date:'2026-08-21', fournisseur:'Laiterie du Verdon', numero_bl:'BL-4061', type_produit:'Sec', produit:'Beurre doux', lot:'BEU-260821D', dlc_ddm_type:'DLC', dlc_ddm:'2026-08-29', quantite:7.08, unite:'kg', temperature:'', temperature_cible:'', conformite:'Conforme', action:'', regle:'Non-regle', prix:9.31 }
   ];
 
   const productions = [
-    { id_production:'PROD-DEMO-000', date:'2026-04-17', recette_id:'REC-001', recette:'Salade quinoa poulet', lot_recette:'SAL-170426-MAT', poids_net:'320', dlc_ddm_type:'DLC', dlc_ddm:'2026-04-20', ingredient_id:'ING-001', ingredient:'Quinoa cuit', lot_ingredient:'QUI-160426-A', dlc_ddm_ingredient:'2026-04-22', poids_ingredient:'450', energie_kj:'214.96', energie_kcal:'51.38', proteines_g:'1.88', glucides_g:'9.13', sucres_g:'0.39', lipides_g:'0.81', ags_g:'0.09', sel_g:'0.00', fibres_g:'1.20', allergenes:'', mentions:'Conserver entre 0°C et +4°C', format_export:'pdf' },
-    { id_production:'PROD-DEMO-000', date:'2026-04-17', recette_id:'REC-001', recette:'Salade quinoa poulet', lot_recette:'SAL-170426-MAT', poids_net:'320', dlc_ddm_type:'DLC', dlc_ddm:'2026-04-20', ingredient_id:'ING-002', ingredient:'Poulet roti eminces', lot_ingredient:'POU-170426-B', dlc_ddm_ingredient:'2026-04-21', poids_ingredient:'320', energie_kj:'227.84', energie_kcal:'54.40', proteines_g:'8.64', glucides_g:'0.16', sucres_g:'0.03', lipides_g:'1.98', ags_g:'0.48', sel_g:'0.06', fibres_g:'0.00', allergenes:'', mentions:'Conserver entre 0°C et +4°C', format_export:'pdf' },
-    { id_production:'PROD-DEMO-000', date:'2026-04-17', recette_id:'REC-001', recette:'Salade quinoa poulet', lot_recette:'SAL-170426-MAT', poids_net:'320', dlc_ddm_type:'DLC', dlc_ddm:'2026-04-20', ingredient_id:'ING-003', ingredient:'Parmesan rape', lot_ingredient:'PAR-120426-C', dlc_ddm_ingredient:'2026-05-10', poids_ingredient:'60', energie_kj:'100.20', energie_kcal:'24.12', proteines_g:'1.92', glucides_g:'0.00', sucres_g:'0.00', lipides_g:'1.74', ags_g:'1.12', sel_g:'0.10', fibres_g:'0.00', allergenes:'LAIT', mentions:'Conserver entre 0°C et +4°C', format_export:'pdf' },
-    { id_production:'PROD-DEMO-003', date:'2026-04-19', recette_id:'REC-001', recette:'Salade quinoa poulet', lot_recette:'SAL-190426-SOIR', poids_net:'320', dlc_ddm_type:'DLC', dlc_ddm:'2026-04-22', ingredient_id:'ING-001', ingredient:'Quinoa cuit', lot_ingredient:'QUI-180426-B', dlc_ddm_ingredient:'2026-04-24', poids_ingredient:'450', energie_kj:'214.96', energie_kcal:'51.38', proteines_g:'1.88', glucides_g:'9.13', sucres_g:'0.39', lipides_g:'0.81', ags_g:'0.09', sel_g:'0.00', fibres_g:'1.20', allergenes:'', mentions:'Conserver entre 0°C et +4°C', format_export:'pdf' },
-    { id_production:'PROD-DEMO-003', date:'2026-04-19', recette_id:'REC-001', recette:'Salade quinoa poulet', lot_recette:'SAL-190426-SOIR', poids_net:'320', dlc_ddm_type:'DLC', dlc_ddm:'2026-04-22', ingredient_id:'ING-002', ingredient:'Poulet roti eminces', lot_ingredient:'POU-190426-A', dlc_ddm_ingredient:'2026-04-23', poids_ingredient:'320', energie_kj:'227.84', energie_kcal:'54.40', proteines_g:'8.64', glucides_g:'0.16', sucres_g:'0.03', lipides_g:'1.98', ags_g:'0.48', sel_g:'0.06', fibres_g:'0.00', allergenes:'', mentions:'Conserver entre 0°C et +4°C', format_export:'pdf' },
-    { id_production:'PROD-DEMO-001', date:'2026-04-18', recette_id:'REC-002', recette:'Lasagnes de legumes', lot_recette:'LAS-180426-A', poids_net:'750', dlc_ddm_type:'DLC', dlc_ddm:'2026-04-22', ingredient_id:'ING-011', ingredient:'Sauce tomate maison', lot_ingredient:'TOM-180426', dlc_ddm_ingredient:'2027-02-10', poids_ingredient:'600', energie_kj:'115.60', energie_kcal:'27.52', proteines_g:'0.61', glucides_g:'2.86', sucres_g:'2.09', lipides_g:'1.38', ags_g:'0.22', sel_g:'0.03', fibres_g:'0.88', allergenes:'', mentions:'Conserver entre 0°C et +4°C', format_export:'pdf' },
-    { id_production:'PROD-DEMO-001', date:'2026-04-18', recette_id:'REC-002', recette:'Lasagnes de legumes', lot_recette:'LAS-180426-A', poids_net:'750', dlc_ddm_type:'DLC', dlc_ddm:'2026-04-22', ingredient_id:'ING-004', ingredient:'Creme liquide 30%', lot_ingredient:'CRE-170426', dlc_ddm_ingredient:'2026-04-25', poids_ingredient:'220', energie_kj:'249.36', energie_kcal:'60.55', proteines_g:'0.44', glucides_g:'0.63', sucres_g:'0.63', lipides_g:'6.06', ags_g:'3.88', sel_g:'0.02', fibres_g:'0.00', allergenes:'LAIT', mentions:'Conserver entre 0°C et +4°C', format_export:'pdf' },
-    { id_production:'PROD-DEMO-002', date:'2026-04-19', recette_id:'REC-003', recette:'Brownie noisette', lot_recette:'BRO-190426-B', poids_net:'90', dlc_ddm_type:'DDM', dlc_ddm:'2026-05-05', ingredient_id:'ING-013', ingredient:'Base brownie noisette', lot_ingredient:'BASE-BRO-0426', dlc_ddm_ingredient:'2026-04-30', poids_ingredient:'700', energie_kj:'1443.75', energie_kcal:'345.63', proteines_g:'5.91', glucides_g:'30.92', sucres_g:'18.81', lipides_g:'21.44', ags_g:'9.63', sel_g:'0.09', fibres_g:'2.48', allergenes:'GLUTEN,OEUFS,LAIT,FRUITS_A_COQUE', mentions:'Peut contenir traces de sesame', format_export:'pdf' }
+    { id_production:'PROD-DEMO-000', date:'2025-09-16', recette_id:'REC-003', recette:'Brownie noisette', lot_recette:'BRO-250916-B', poids_net:'989', dlc_ddm_type:'DLC', dlc_ddm:'2025-09-24', ingredient_id:'ING-013', ingredient:'Base brownie noisette', lot_ingredient:'BAS-250916A', dlc_ddm_ingredient:'2025-09-23', poids_ingredient:'592', prix_unitaire:'6.8', cout_ligne:'4.03', energie_kj:'0', energie_kcal:'0', proteines_g:'0', glucides_g:'0', sucres_g:'0', lipides_g:'0', ags_g:'0', sel_g:'0', fibres_g:'0', allergenes:'', mentions:'', format_export:'pdf' },
+    { id_production:'PROD-DEMO-001', date:'2025-09-14', recette_id:'REC-002', recette:'Lasagnes de legumes', lot_recette:'LAS-250914-B', poids_net:'521', dlc_ddm_type:'DLC', dlc_ddm:'2025-09-27', ingredient_id:'ING-011', ingredient:'Sauce tomate maison', lot_ingredient:'SAU-250914D', dlc_ddm_ingredient:'2025-09-26', poids_ingredient:'558', prix_unitaire:'2.6', cout_ligne:'1.45', energie_kj:'0', energie_kcal:'0', proteines_g:'0', glucides_g:'0', sucres_g:'0', lipides_g:'0', ags_g:'0', sel_g:'0', fibres_g:'0', allergenes:'', mentions:'', format_export:'pdf' },
+    { id_production:'PROD-DEMO-001', date:'2025-09-14', recette_id:'REC-002', recette:'Lasagnes de legumes', lot_recette:'LAS-250914-B', poids_net:'561', dlc_ddm_type:'DLC', dlc_ddm:'2025-09-27', ingredient_id:'ING-004', ingredient:'Creme liquide 30%', lot_ingredient:'CRE-250914D', dlc_ddm_ingredient:'2025-09-30', poids_ingredient:'475', prix_unitaire:'4.43', cout_ligne:'2.10', energie_kj:'0', energie_kcal:'0', proteines_g:'0', glucides_g:'0', sucres_g:'0', lipides_g:'0', ags_g:'0', sel_g:'0', fibres_g:'0', allergenes:'', mentions:'', format_export:'pdf' },
+    { id_production:'PROD-DEMO-002', date:'2025-09-21', recette_id:'REC-004', recette:'Wrap poulet crudites', lot_recette:'WRP-250921-D', poids_net:'375', dlc_ddm_type:'DLC', dlc_ddm:'2025-10-10', ingredient_id:'ING-002', ingredient:'Poulet roti eminces', lot_ingredient:'POU-250921C', dlc_ddm_ingredient:'2025-09-28', poids_ingredient:'514', prix_unitaire:'11.8', cout_ligne:'6.06', energie_kj:'0', energie_kcal:'0', proteines_g:'0', glucides_g:'0', sucres_g:'0', lipides_g:'0', ags_g:'0', sel_g:'0', fibres_g:'0', allergenes:'', mentions:'', format_export:'pdf' },
+    { id_production:'PROD-DEMO-002', date:'2025-09-21', recette_id:'REC-004', recette:'Wrap poulet crudites', lot_recette:'WRP-250921-D', poids_net:'639', dlc_ddm_type:'DLC', dlc_ddm:'2025-10-10', ingredient_id:'ING-005', ingredient:'Tomate concassee', lot_ingredient:'TOM-250921B', dlc_ddm_ingredient:'2025-10-05', poids_ingredient:'676', prix_unitaire:'2.1', cout_ligne:'1.42', energie_kj:'0', energie_kcal:'0', proteines_g:'0', glucides_g:'0', sucres_g:'0', lipides_g:'0', ags_g:'0', sel_g:'0', fibres_g:'0', allergenes:'', mentions:'', format_export:'pdf' },
+    { id_production:'PROD-DEMO-002', date:'2025-09-21', recette_id:'REC-004', recette:'Wrap poulet crudites', lot_recette:'WRP-250921-D', poids_net:'854', dlc_ddm_type:'DLC', dlc_ddm:'2025-10-10', ingredient_id:'ING-012', ingredient:'Oignons eminces', lot_ingredient:'OIG-250921A', dlc_ddm_ingredient:'2025-10-11', poids_ingredient:'549', prix_unitaire:'1.89', cout_ligne:'1.04', energie_kj:'0', energie_kcal:'0', proteines_g:'0', glucides_g:'0', sucres_g:'0', lipides_g:'0', ags_g:'0', sel_g:'0', fibres_g:'0', allergenes:'', mentions:'', format_export:'pdf' },
+    { id_production:'PROD-DEMO-003', date:'2025-10-30', recette_id:'REC-001', recette:'Salade quinoa poulet', lot_recette:'SAL-251030-C', poids_net:'367', dlc_ddm_type:'DLC', dlc_ddm:'2025-11-07', ingredient_id:'ING-001', ingredient:'Quinoa cuit', lot_ingredient:'QUI-251030A', dlc_ddm_ingredient:'2025-11-09', poids_ingredient:'587', prix_unitaire:'4.6', cout_ligne:'2.70', energie_kj:'0', energie_kcal:'0', proteines_g:'0', glucides_g:'0', sucres_g:'0', lipides_g:'0', ags_g:'0', sel_g:'0', fibres_g:'0', allergenes:'', mentions:'', format_export:'pdf' },
+    { id_production:'PROD-DEMO-003', date:'2025-10-30', recette_id:'REC-001', recette:'Salade quinoa poulet', lot_recette:'SAL-251030-C', poids_net:'355', dlc_ddm_type:'DLC', dlc_ddm:'2025-11-07', ingredient_id:'ING-002', ingredient:'Poulet roti eminces', lot_ingredient:'POU-251030A', dlc_ddm_ingredient:'2025-11-16', poids_ingredient:'350', prix_unitaire:'11.8', cout_ligne:'4.13', energie_kj:'0', energie_kcal:'0', proteines_g:'0', glucides_g:'0', sucres_g:'0', lipides_g:'0', ags_g:'0', sel_g:'0', fibres_g:'0', allergenes:'', mentions:'', format_export:'pdf' },
+    { id_production:'PROD-DEMO-003', date:'2025-10-30', recette_id:'REC-001', recette:'Salade quinoa poulet', lot_recette:'SAL-251030-C', poids_net:'912', dlc_ddm_type:'DLC', dlc_ddm:'2025-11-07', ingredient_id:'ING-003', ingredient:'Parmesan rape', lot_ingredient:'PAR-251030C', dlc_ddm_ingredient:'2025-11-12', poids_ingredient:'794', prix_unitaire:'19.48', cout_ligne:'15.48', energie_kj:'0', energie_kcal:'0', proteines_g:'0', glucides_g:'0', sucres_g:'0', lipides_g:'0', ags_g:'0', sel_g:'0', fibres_g:'0', allergenes:'', mentions:'', format_export:'pdf' },
+    { id_production:'PROD-DEMO-004', date:'2025-10-09', recette_id:'REC-001', recette:'Salade quinoa poulet', lot_recette:'SAL-251009-D', poids_net:'420', dlc_ddm_type:'DLC', dlc_ddm:'2025-10-22', ingredient_id:'ING-001', ingredient:'Quinoa cuit', lot_ingredient:'QUI-251009A', dlc_ddm_ingredient:'2025-10-18', poids_ingredient:'757', prix_unitaire:'4.6', cout_ligne:'3.48', energie_kj:'0', energie_kcal:'0', proteines_g:'0', glucides_g:'0', sucres_g:'0', lipides_g:'0', ags_g:'0', sel_g:'0', fibres_g:'0', allergenes:'', mentions:'', format_export:'pdf' },
+    { id_production:'PROD-DEMO-004', date:'2025-10-09', recette_id:'REC-001', recette:'Salade quinoa poulet', lot_recette:'SAL-251009-D', poids_net:'574', dlc_ddm_type:'DLC', dlc_ddm:'2025-10-22', ingredient_id:'ING-002', ingredient:'Poulet roti eminces', lot_ingredient:'POU-251009B', dlc_ddm_ingredient:'2025-10-28', poids_ingredient:'315', prix_unitaire:'11.8', cout_ligne:'3.72', energie_kj:'0', energie_kcal:'0', proteines_g:'0', glucides_g:'0', sucres_g:'0', lipides_g:'0', ags_g:'0', sel_g:'0', fibres_g:'0', allergenes:'', mentions:'', format_export:'pdf' },
+    { id_production:'PROD-DEMO-004', date:'2025-10-09', recette_id:'REC-001', recette:'Salade quinoa poulet', lot_recette:'SAL-251009-D', poids_net:'450', dlc_ddm_type:'DLC', dlc_ddm:'2025-10-22', ingredient_id:'ING-003', ingredient:'Parmesan rape', lot_ingredient:'PAR-251009A', dlc_ddm_ingredient:'2025-10-25', poids_ingredient:'520', prix_unitaire:'19.48', cout_ligne:'10.12', energie_kj:'0', energie_kcal:'0', proteines_g:'0', glucides_g:'0', sucres_g:'0', lipides_g:'0', ags_g:'0', sel_g:'0', fibres_g:'0', allergenes:'', mentions:'', format_export:'pdf' },
+    { id_production:'PROD-DEMO-005', date:'2025-10-12', recette_id:'REC-003', recette:'Brownie noisette', lot_recette:'BRO-251012-D', poids_net:'418', dlc_ddm_type:'DLC', dlc_ddm:'2025-10-28', ingredient_id:'ING-013', ingredient:'Base brownie noisette', lot_ingredient:'BAS-251012A', dlc_ddm_ingredient:'2025-11-01', poids_ingredient:'368', prix_unitaire:'6.8', cout_ligne:'2.50', energie_kj:'0', energie_kcal:'0', proteines_g:'0', glucides_g:'0', sucres_g:'0', lipides_g:'0', ags_g:'0', sel_g:'0', fibres_g:'0', allergenes:'', mentions:'', format_export:'pdf' },
+    { id_production:'PROD-DEMO-006', date:'2025-11-02', recette_id:'REC-004', recette:'Wrap poulet crudites', lot_recette:'WRP-251102-C', poids_net:'549', dlc_ddm_type:'DLC', dlc_ddm:'2025-11-20', ingredient_id:'ING-002', ingredient:'Poulet roti eminces', lot_ingredient:'POU-251102A', dlc_ddm_ingredient:'2025-11-12', poids_ingredient:'367', prix_unitaire:'12.4', cout_ligne:'4.54', energie_kj:'0', energie_kcal:'0', proteines_g:'0', glucides_g:'0', sucres_g:'0', lipides_g:'0', ags_g:'0', sel_g:'0', fibres_g:'0', allergenes:'', mentions:'', format_export:'pdf' },
+    { id_production:'PROD-DEMO-006', date:'2025-11-02', recette_id:'REC-004', recette:'Wrap poulet crudites', lot_recette:'WRP-251102-C', poids_net:'970', dlc_ddm_type:'DLC', dlc_ddm:'2025-11-20', ingredient_id:'ING-005', ingredient:'Tomate concassee', lot_ingredient:'TOM-251102C', dlc_ddm_ingredient:'2025-11-11', poids_ingredient:'663', prix_unitaire:'2.1', cout_ligne:'1.39', energie_kj:'0', energie_kcal:'0', proteines_g:'0', glucides_g:'0', sucres_g:'0', lipides_g:'0', ags_g:'0', sel_g:'0', fibres_g:'0', allergenes:'', mentions:'', format_export:'pdf' },
+    { id_production:'PROD-DEMO-006', date:'2025-11-02', recette_id:'REC-004', recette:'Wrap poulet crudites', lot_recette:'WRP-251102-C', poids_net:'368', dlc_ddm_type:'DLC', dlc_ddm:'2025-11-20', ingredient_id:'ING-012', ingredient:'Oignons eminces', lot_ingredient:'OIG-251102C', dlc_ddm_ingredient:'2025-11-11', poids_ingredient:'150', prix_unitaire:'1.82', cout_ligne:'0.27', energie_kj:'0', energie_kcal:'0', proteines_g:'0', glucides_g:'0', sucres_g:'0', lipides_g:'0', ags_g:'0', sel_g:'0', fibres_g:'0', allergenes:'', mentions:'', format_export:'pdf' },
+    { id_production:'PROD-DEMO-007', date:'2025-11-06', recette_id:'REC-002', recette:'Lasagnes de legumes', lot_recette:'LAS-251106-D', poids_net:'238', dlc_ddm_type:'DLC', dlc_ddm:'2025-11-18', ingredient_id:'ING-011', ingredient:'Sauce tomate maison', lot_ingredient:'SAU-251106D', dlc_ddm_ingredient:'2025-11-20', poids_ingredient:'433', prix_unitaire:'2.6', cout_ligne:'1.13', energie_kj:'0', energie_kcal:'0', proteines_g:'0', glucides_g:'0', sucres_g:'0', lipides_g:'0', ags_g:'0', sel_g:'0', fibres_g:'0', allergenes:'', mentions:'', format_export:'pdf' },
+    { id_production:'PROD-DEMO-007', date:'2025-11-06', recette_id:'REC-002', recette:'Lasagnes de legumes', lot_recette:'LAS-251106-D', poids_net:'438', dlc_ddm_type:'DLC', dlc_ddm:'2025-11-18', ingredient_id:'ING-004', ingredient:'Creme liquide 30%', lot_ingredient:'CRE-251106C', dlc_ddm_ingredient:'2025-11-21', poids_ingredient:'143', prix_unitaire:'4.45', cout_ligne:'0.63', energie_kj:'0', energie_kcal:'0', proteines_g:'0', glucides_g:'0', sucres_g:'0', lipides_g:'0', ags_g:'0', sel_g:'0', fibres_g:'0', allergenes:'', mentions:'', format_export:'pdf' },
+    { id_production:'PROD-DEMO-008', date:'2025-12-02', recette_id:'REC-002', recette:'Lasagnes de legumes', lot_recette:'LAS-251202-B', poids_net:'844', dlc_ddm_type:'DLC', dlc_ddm:'2025-12-19', ingredient_id:'ING-011', ingredient:'Sauce tomate maison', lot_ingredient:'SAU-251202A', dlc_ddm_ingredient:'2025-12-11', poids_ingredient:'316', prix_unitaire:'2.6', cout_ligne:'0.82', energie_kj:'0', energie_kcal:'0', proteines_g:'0', glucides_g:'0', sucres_g:'0', lipides_g:'0', ags_g:'0', sel_g:'0', fibres_g:'0', allergenes:'', mentions:'', format_export:'pdf' },
+    { id_production:'PROD-DEMO-008', date:'2025-12-02', recette_id:'REC-002', recette:'Lasagnes de legumes', lot_recette:'LAS-251202-B', poids_net:'363', dlc_ddm_type:'DLC', dlc_ddm:'2025-12-19', ingredient_id:'ING-004', ingredient:'Creme liquide 30%', lot_ingredient:'CRE-251202B', dlc_ddm_ingredient:'2025-12-20', poids_ingredient:'458', prix_unitaire:'4.62', cout_ligne:'2.11', energie_kj:'0', energie_kcal:'0', proteines_g:'0', glucides_g:'0', sucres_g:'0', lipides_g:'0', ags_g:'0', sel_g:'0', fibres_g:'0', allergenes:'', mentions:'', format_export:'pdf' },
+    { id_production:'PROD-DEMO-009', date:'2025-12-23', recette_id:'REC-001', recette:'Salade quinoa poulet', lot_recette:'SAL-251223-A', poids_net:'713', dlc_ddm_type:'DLC', dlc_ddm:'2026-01-08', ingredient_id:'ING-001', ingredient:'Quinoa cuit', lot_ingredient:'QUI-251223B', dlc_ddm_ingredient:'2026-01-11', poids_ingredient:'326', prix_unitaire:'4.76', cout_ligne:'1.55', energie_kj:'0', energie_kcal:'0', proteines_g:'0', glucides_g:'0', sucres_g:'0', lipides_g:'0', ags_g:'0', sel_g:'0', fibres_g:'0', allergenes:'', mentions:'', format_export:'pdf' },
+    { id_production:'PROD-DEMO-009', date:'2025-12-23', recette_id:'REC-001', recette:'Salade quinoa poulet', lot_recette:'SAL-251223-A', poids_net:'661', dlc_ddm_type:'DLC', dlc_ddm:'2026-01-08', ingredient_id:'ING-002', ingredient:'Poulet roti eminces', lot_ingredient:'POU-251223D', dlc_ddm_ingredient:'2026-01-08', poids_ingredient:'639', prix_unitaire:'12.4', cout_ligne:'7.92', energie_kj:'0', energie_kcal:'0', proteines_g:'0', glucides_g:'0', sucres_g:'0', lipides_g:'0', ags_g:'0', sel_g:'0', fibres_g:'0', allergenes:'', mentions:'', format_export:'pdf' },
+    { id_production:'PROD-DEMO-009', date:'2025-12-23', recette_id:'REC-001', recette:'Salade quinoa poulet', lot_recette:'SAL-251223-A', poids_net:'630', dlc_ddm_type:'DLC', dlc_ddm:'2026-01-08', ingredient_id:'ING-003', ingredient:'Parmesan rape', lot_ingredient:'PAR-251223C', dlc_ddm_ingredient:'2026-01-08', poids_ingredient:'794', prix_unitaire:'20.1', cout_ligne:'15.96', energie_kj:'0', energie_kcal:'0', proteines_g:'0', glucides_g:'0', sucres_g:'0', lipides_g:'0', ags_g:'0', sel_g:'0', fibres_g:'0', allergenes:'', mentions:'', format_export:'pdf' },
+    { id_production:'PROD-DEMO-010', date:'2026-01-02', recette_id:'REC-004', recette:'Wrap poulet crudites', lot_recette:'WRP-260102-A', poids_net:'794', dlc_ddm_type:'DLC', dlc_ddm:'2026-01-09', ingredient_id:'ING-002', ingredient:'Poulet roti eminces', lot_ingredient:'POU-260102B', dlc_ddm_ingredient:'2026-01-11', poids_ingredient:'446', prix_unitaire:'13.09', cout_ligne:'5.84', energie_kj:'0', energie_kcal:'0', proteines_g:'0', glucides_g:'0', sucres_g:'0', lipides_g:'0', ags_g:'0', sel_g:'0', fibres_g:'0', allergenes:'', mentions:'', format_export:'pdf' },
+    { id_production:'PROD-DEMO-010', date:'2026-01-02', recette_id:'REC-004', recette:'Wrap poulet crudites', lot_recette:'WRP-260102-A', poids_net:'883', dlc_ddm_type:'DLC', dlc_ddm:'2026-01-09', ingredient_id:'ING-005', ingredient:'Tomate concassee', lot_ingredient:'TOM-260102B', dlc_ddm_ingredient:'2026-01-11', poids_ingredient:'187', prix_unitaire:'2.1', cout_ligne:'0.39', energie_kj:'0', energie_kcal:'0', proteines_g:'0', glucides_g:'0', sucres_g:'0', lipides_g:'0', ags_g:'0', sel_g:'0', fibres_g:'0', allergenes:'', mentions:'', format_export:'pdf' },
+    { id_production:'PROD-DEMO-010', date:'2026-01-02', recette_id:'REC-004', recette:'Wrap poulet crudites', lot_recette:'WRP-260102-A', poids_net:'857', dlc_ddm_type:'DLC', dlc_ddm:'2026-01-09', ingredient_id:'ING-012', ingredient:'Oignons eminces', lot_ingredient:'OIG-260102D', dlc_ddm_ingredient:'2026-01-19', poids_ingredient:'676', prix_unitaire:'2.02', cout_ligne:'1.37', energie_kj:'0', energie_kcal:'0', proteines_g:'0', glucides_g:'0', sucres_g:'0', lipides_g:'0', ags_g:'0', sel_g:'0', fibres_g:'0', allergenes:'', mentions:'', format_export:'pdf' },
+    { id_production:'PROD-DEMO-011', date:'2026-01-27', recette_id:'REC-003', recette:'Brownie noisette', lot_recette:'BRO-260127-D', poids_net:'882', dlc_ddm_type:'DLC', dlc_ddm:'2026-02-16', ingredient_id:'ING-013', ingredient:'Base brownie noisette', lot_ingredient:'BAS-260127C', dlc_ddm_ingredient:'2026-02-13', poids_ingredient:'664', prix_unitaire:'6.8', cout_ligne:'4.51', energie_kj:'0', energie_kcal:'0', proteines_g:'0', glucides_g:'0', sucres_g:'0', lipides_g:'0', ags_g:'0', sel_g:'0', fibres_g:'0', allergenes:'', mentions:'', format_export:'pdf' },
+    { id_production:'PROD-DEMO-012', date:'2026-01-18', recette_id:'REC-004', recette:'Wrap poulet crudites', lot_recette:'WRP-260118-C', poids_net:'201', dlc_ddm_type:'DLC', dlc_ddm:'2026-01-29', ingredient_id:'ING-002', ingredient:'Poulet roti eminces', lot_ingredient:'POU-260118A', dlc_ddm_ingredient:'2026-01-31', poids_ingredient:'755', prix_unitaire:'13.09', cout_ligne:'9.88', energie_kj:'0', energie_kcal:'0', proteines_g:'0', glucides_g:'0', sucres_g:'0', lipides_g:'0', ags_g:'0', sel_g:'0', fibres_g:'0', allergenes:'', mentions:'', format_export:'pdf' },
+    { id_production:'PROD-DEMO-012', date:'2026-01-18', recette_id:'REC-004', recette:'Wrap poulet crudites', lot_recette:'WRP-260118-C', poids_net:'504', dlc_ddm_type:'DLC', dlc_ddm:'2026-01-29', ingredient_id:'ING-005', ingredient:'Tomate concassee', lot_ingredient:'TOM-260118B', dlc_ddm_ingredient:'2026-02-02', poids_ingredient:'557', prix_unitaire:'2.1', cout_ligne:'1.17', energie_kj:'0', energie_kcal:'0', proteines_g:'0', glucides_g:'0', sucres_g:'0', lipides_g:'0', ags_g:'0', sel_g:'0', fibres_g:'0', allergenes:'', mentions:'', format_export:'pdf' },
+    { id_production:'PROD-DEMO-012', date:'2026-01-18', recette_id:'REC-004', recette:'Wrap poulet crudites', lot_recette:'WRP-260118-C', poids_net:'306', dlc_ddm_type:'DLC', dlc_ddm:'2026-01-29', ingredient_id:'ING-012', ingredient:'Oignons eminces', lot_ingredient:'OIG-260118A', dlc_ddm_ingredient:'2026-02-04', poids_ingredient:'490', prix_unitaire:'2.02', cout_ligne:'0.99', energie_kj:'0', energie_kcal:'0', proteines_g:'0', glucides_g:'0', sucres_g:'0', lipides_g:'0', ags_g:'0', sel_g:'0', fibres_g:'0', allergenes:'', mentions:'', format_export:'pdf' },
+    { id_production:'PROD-DEMO-013', date:'2026-02-27', recette_id:'REC-001', recette:'Salade quinoa poulet', lot_recette:'SAL-260227-A', poids_net:'467', dlc_ddm_type:'DLC', dlc_ddm:'2026-03-13', ingredient_id:'ING-001', ingredient:'Quinoa cuit', lot_ingredient:'QUI-260227A', dlc_ddm_ingredient:'2026-03-16', poids_ingredient:'217', prix_unitaire:'5.01', cout_ligne:'1.09', energie_kj:'0', energie_kcal:'0', proteines_g:'0', glucides_g:'0', sucres_g:'0', lipides_g:'0', ags_g:'0', sel_g:'0', fibres_g:'0', allergenes:'', mentions:'', format_export:'pdf' },
+    { id_production:'PROD-DEMO-013', date:'2026-02-27', recette_id:'REC-001', recette:'Salade quinoa poulet', lot_recette:'SAL-260227-A', poids_net:'275', dlc_ddm_type:'DLC', dlc_ddm:'2026-03-13', ingredient_id:'ING-002', ingredient:'Poulet roti eminces', lot_ingredient:'POU-260227D', dlc_ddm_ingredient:'2026-03-06', poids_ingredient:'378', prix_unitaire:'12.62', cout_ligne:'4.77', energie_kj:'0', energie_kcal:'0', proteines_g:'0', glucides_g:'0', sucres_g:'0', lipides_g:'0', ags_g:'0', sel_g:'0', fibres_g:'0', allergenes:'', mentions:'', format_export:'pdf' },
+    { id_production:'PROD-DEMO-013', date:'2026-02-27', recette_id:'REC-001', recette:'Salade quinoa poulet', lot_recette:'SAL-260227-A', poids_net:'613', dlc_ddm_type:'DLC', dlc_ddm:'2026-03-13', ingredient_id:'ING-003', ingredient:'Parmesan rape', lot_ingredient:'PAR-260227D', dlc_ddm_ingredient:'2026-03-09', poids_ingredient:'759', prix_unitaire:'20.67', cout_ligne:'15.69', energie_kj:'0', energie_kcal:'0', proteines_g:'0', glucides_g:'0', sucres_g:'0', lipides_g:'0', ags_g:'0', sel_g:'0', fibres_g:'0', allergenes:'', mentions:'', format_export:'pdf' },
+    { id_production:'PROD-DEMO-014', date:'2026-02-01', recette_id:'REC-002', recette:'Lasagnes de legumes', lot_recette:'LAS-260201-C', poids_net:'507', dlc_ddm_type:'DLC', dlc_ddm:'2026-02-10', ingredient_id:'ING-011', ingredient:'Sauce tomate maison', lot_ingredient:'SAU-260201B', dlc_ddm_ingredient:'2026-02-08', poids_ingredient:'399', prix_unitaire:'2.6', cout_ligne:'1.04', energie_kj:'0', energie_kcal:'0', proteines_g:'0', glucides_g:'0', sucres_g:'0', lipides_g:'0', ags_g:'0', sel_g:'0', fibres_g:'0', allergenes:'', mentions:'', format_export:'pdf' },
+    { id_production:'PROD-DEMO-014', date:'2026-02-01', recette_id:'REC-002', recette:'Lasagnes de legumes', lot_recette:'LAS-260201-C', poids_net:'990', dlc_ddm_type:'DLC', dlc_ddm:'2026-02-10', ingredient_id:'ING-004', ingredient:'Creme liquide 30%', lot_ingredient:'CRE-260201C', dlc_ddm_ingredient:'2026-02-16', poids_ingredient:'355', prix_unitaire:'4.37', cout_ligne:'1.55', energie_kj:'0', energie_kcal:'0', proteines_g:'0', glucides_g:'0', sucres_g:'0', lipides_g:'0', ags_g:'0', sel_g:'0', fibres_g:'0', allergenes:'', mentions:'', format_export:'pdf' },
+    { id_production:'PROD-DEMO-015', date:'2026-02-25', recette_id:'REC-001', recette:'Salade quinoa poulet', lot_recette:'SAL-260225-A', poids_net:'222', dlc_ddm_type:'DLC', dlc_ddm:'2026-03-11', ingredient_id:'ING-001', ingredient:'Quinoa cuit', lot_ingredient:'QUI-260225D', dlc_ddm_ingredient:'2026-03-13', poids_ingredient:'352', prix_unitaire:'5.01', cout_ligne:'1.76', energie_kj:'0', energie_kcal:'0', proteines_g:'0', glucides_g:'0', sucres_g:'0', lipides_g:'0', ags_g:'0', sel_g:'0', fibres_g:'0', allergenes:'', mentions:'', format_export:'pdf' },
+    { id_production:'PROD-DEMO-015', date:'2026-02-25', recette_id:'REC-001', recette:'Salade quinoa poulet', lot_recette:'SAL-260225-A', poids_net:'977', dlc_ddm_type:'DLC', dlc_ddm:'2026-03-11', ingredient_id:'ING-002', ingredient:'Poulet roti eminces', lot_ingredient:'POU-260225D', dlc_ddm_ingredient:'2026-03-10', poids_ingredient:'180', prix_unitaire:'12.62', cout_ligne:'2.27', energie_kj:'0', energie_kcal:'0', proteines_g:'0', glucides_g:'0', sucres_g:'0', lipides_g:'0', ags_g:'0', sel_g:'0', fibres_g:'0', allergenes:'', mentions:'', format_export:'pdf' },
+    { id_production:'PROD-DEMO-015', date:'2026-02-25', recette_id:'REC-001', recette:'Salade quinoa poulet', lot_recette:'SAL-260225-A', poids_net:'564', dlc_ddm_type:'DLC', dlc_ddm:'2026-03-11', ingredient_id:'ING-003', ingredient:'Parmesan rape', lot_ingredient:'PAR-260225C', dlc_ddm_ingredient:'2026-03-16', poids_ingredient:'477', prix_unitaire:'20.67', cout_ligne:'9.86', energie_kj:'0', energie_kcal:'0', proteines_g:'0', glucides_g:'0', sucres_g:'0', lipides_g:'0', ags_g:'0', sel_g:'0', fibres_g:'0', allergenes:'', mentions:'', format_export:'pdf' },
+    { id_production:'PROD-DEMO-016', date:'2026-03-07', recette_id:'REC-001', recette:'Salade quinoa poulet', lot_recette:'SAL-260307-D', poids_net:'282', dlc_ddm_type:'DLC', dlc_ddm:'2026-03-21', ingredient_id:'ING-001', ingredient:'Quinoa cuit', lot_ingredient:'QUI-260307B', dlc_ddm_ingredient:'2026-03-18', poids_ingredient:'534', prix_unitaire:'5.01', cout_ligne:'2.68', energie_kj:'0', energie_kcal:'0', proteines_g:'0', glucides_g:'0', sucres_g:'0', lipides_g:'0', ags_g:'0', sel_g:'0', fibres_g:'0', allergenes:'', mentions:'', format_export:'pdf' },
+    { id_production:'PROD-DEMO-016', date:'2026-03-07', recette_id:'REC-001', recette:'Salade quinoa poulet', lot_recette:'SAL-260307-D', poids_net:'285', dlc_ddm_type:'DLC', dlc_ddm:'2026-03-21', ingredient_id:'ING-002', ingredient:'Poulet roti eminces', lot_ingredient:'POU-260307A', dlc_ddm_ingredient:'2026-03-22', poids_ingredient:'172', prix_unitaire:'12.62', cout_ligne:'2.17', energie_kj:'0', energie_kcal:'0', proteines_g:'0', glucides_g:'0', sucres_g:'0', lipides_g:'0', ags_g:'0', sel_g:'0', fibres_g:'0', allergenes:'', mentions:'', format_export:'pdf' },
+    { id_production:'PROD-DEMO-016', date:'2026-03-07', recette_id:'REC-001', recette:'Salade quinoa poulet', lot_recette:'SAL-260307-D', poids_net:'380', dlc_ddm_type:'DLC', dlc_ddm:'2026-03-21', ingredient_id:'ING-003', ingredient:'Parmesan rape', lot_ingredient:'PAR-260307D', dlc_ddm_ingredient:'2026-03-24', poids_ingredient:'480', prix_unitaire:'20.01', cout_ligne:'9.61', energie_kj:'0', energie_kcal:'0', proteines_g:'0', glucides_g:'0', sucres_g:'0', lipides_g:'0', ags_g:'0', sel_g:'0', fibres_g:'0', allergenes:'', mentions:'', format_export:'pdf' },
+    { id_production:'PROD-DEMO-017', date:'2026-03-23', recette_id:'REC-001', recette:'Salade quinoa poulet', lot_recette:'SAL-260323-C', poids_net:'450', dlc_ddm_type:'DLC', dlc_ddm:'2026-04-10', ingredient_id:'ING-001', ingredient:'Quinoa cuit', lot_ingredient:'QUI-260323D', dlc_ddm_ingredient:'2026-04-07', poids_ingredient:'657', prix_unitaire:'5.01', cout_ligne:'3.29', energie_kj:'0', energie_kcal:'0', proteines_g:'0', glucides_g:'0', sucres_g:'0', lipides_g:'0', ags_g:'0', sel_g:'0', fibres_g:'0', allergenes:'', mentions:'', format_export:'pdf' },
+    { id_production:'PROD-DEMO-017', date:'2026-03-23', recette_id:'REC-001', recette:'Salade quinoa poulet', lot_recette:'SAL-260323-C', poids_net:'278', dlc_ddm_type:'DLC', dlc_ddm:'2026-04-10', ingredient_id:'ING-002', ingredient:'Poulet roti eminces', lot_ingredient:'POU-260323B', dlc_ddm_ingredient:'2026-04-04', poids_ingredient:'401', prix_unitaire:'12.62', cout_ligne:'5.06', energie_kj:'0', energie_kcal:'0', proteines_g:'0', glucides_g:'0', sucres_g:'0', lipides_g:'0', ags_g:'0', sel_g:'0', fibres_g:'0', allergenes:'', mentions:'', format_export:'pdf' },
+    { id_production:'PROD-DEMO-017', date:'2026-03-23', recette_id:'REC-001', recette:'Salade quinoa poulet', lot_recette:'SAL-260323-C', poids_net:'546', dlc_ddm_type:'DLC', dlc_ddm:'2026-04-10', ingredient_id:'ING-003', ingredient:'Parmesan rape', lot_ingredient:'PAR-260323D', dlc_ddm_ingredient:'2026-04-06', poids_ingredient:'180', prix_unitaire:'20.01', cout_ligne:'3.60', energie_kj:'0', energie_kcal:'0', proteines_g:'0', glucides_g:'0', sucres_g:'0', lipides_g:'0', ags_g:'0', sel_g:'0', fibres_g:'0', allergenes:'', mentions:'', format_export:'pdf' },
+    { id_production:'PROD-DEMO-018', date:'2026-04-08', recette_id:'REC-004', recette:'Wrap poulet crudites', lot_recette:'WRP-260408-B', poids_net:'770', dlc_ddm_type:'DLC', dlc_ddm:'2026-04-17', ingredient_id:'ING-002', ingredient:'Poulet roti eminces', lot_ingredient:'POU-260408B', dlc_ddm_ingredient:'2026-04-25', poids_ingredient:'268', prix_unitaire:'12.83', cout_ligne:'3.44', energie_kj:'0', energie_kcal:'0', proteines_g:'0', glucides_g:'0', sucres_g:'0', lipides_g:'0', ags_g:'0', sel_g:'0', fibres_g:'0', allergenes:'', mentions:'', format_export:'pdf' },
+    { id_production:'PROD-DEMO-018', date:'2026-04-08', recette_id:'REC-004', recette:'Wrap poulet crudites', lot_recette:'WRP-260408-B', poids_net:'818', dlc_ddm_type:'DLC', dlc_ddm:'2026-04-17', ingredient_id:'ING-005', ingredient:'Tomate concassee', lot_ingredient:'TOM-260408C', dlc_ddm_ingredient:'2026-04-23', poids_ingredient:'722', prix_unitaire:'2.24', cout_ligne:'1.62', energie_kj:'0', energie_kcal:'0', proteines_g:'0', glucides_g:'0', sucres_g:'0', lipides_g:'0', ags_g:'0', sel_g:'0', fibres_g:'0', allergenes:'', mentions:'', format_export:'pdf' },
+    { id_production:'PROD-DEMO-018', date:'2026-04-08', recette_id:'REC-004', recette:'Wrap poulet crudites', lot_recette:'WRP-260408-B', poids_net:'446', dlc_ddm_type:'DLC', dlc_ddm:'2026-04-17', ingredient_id:'ING-012', ingredient:'Oignons eminces', lot_ingredient:'OIG-260408A', dlc_ddm_ingredient:'2026-04-28', poids_ingredient:'661', prix_unitaire:'2.05', cout_ligne:'1.36', energie_kj:'0', energie_kcal:'0', proteines_g:'0', glucides_g:'0', sucres_g:'0', lipides_g:'0', ags_g:'0', sel_g:'0', fibres_g:'0', allergenes:'', mentions:'', format_export:'pdf' },
+    { id_production:'PROD-DEMO-019', date:'2026-04-16', recette_id:'REC-003', recette:'Brownie noisette', lot_recette:'BRO-260416-A', poids_net:'805', dlc_ddm_type:'DLC', dlc_ddm:'2026-04-30', ingredient_id:'ING-013', ingredient:'Base brownie noisette', lot_ingredient:'BAS-260416D', dlc_ddm_ingredient:'2026-04-27', poids_ingredient:'744', prix_unitaire:'6.8', cout_ligne:'5.06', energie_kj:'0', energie_kcal:'0', proteines_g:'0', glucides_g:'0', sucres_g:'0', lipides_g:'0', ags_g:'0', sel_g:'0', fibres_g:'0', allergenes:'', mentions:'', format_export:'pdf' },
+    { id_production:'PROD-DEMO-020', date:'2026-05-27', recette_id:'REC-002', recette:'Lasagnes de legumes', lot_recette:'LAS-260527-B', poids_net:'434', dlc_ddm_type:'DLC', dlc_ddm:'2026-06-14', ingredient_id:'ING-011', ingredient:'Sauce tomate maison', lot_ingredient:'SAU-260527B', dlc_ddm_ingredient:'2026-06-14', poids_ingredient:'155', prix_unitaire:'2.6', cout_ligne:'0.40', energie_kj:'0', energie_kcal:'0', proteines_g:'0', glucides_g:'0', sucres_g:'0', lipides_g:'0', ags_g:'0', sel_g:'0', fibres_g:'0', allergenes:'', mentions:'', format_export:'pdf' },
+    { id_production:'PROD-DEMO-020', date:'2026-05-27', recette_id:'REC-002', recette:'Lasagnes de legumes', lot_recette:'LAS-260527-B', poids_net:'1000', dlc_ddm_type:'DLC', dlc_ddm:'2026-06-14', ingredient_id:'ING-004', ingredient:'Creme liquide 30%', lot_ingredient:'CRE-260527C', dlc_ddm_ingredient:'2026-06-13', poids_ingredient:'222', prix_unitaire:'4.43', cout_ligne:'0.98', energie_kj:'0', energie_kcal:'0', proteines_g:'0', glucides_g:'0', sucres_g:'0', lipides_g:'0', ags_g:'0', sel_g:'0', fibres_g:'0', allergenes:'', mentions:'', format_export:'pdf' },
+    { id_production:'PROD-DEMO-021', date:'2026-05-03', recette_id:'REC-003', recette:'Brownie noisette', lot_recette:'BRO-260503-D', poids_net:'840', dlc_ddm_type:'DLC', dlc_ddm:'2026-05-22', ingredient_id:'ING-013', ingredient:'Base brownie noisette', lot_ingredient:'BAS-260503A', dlc_ddm_ingredient:'2026-05-20', poids_ingredient:'290', prix_unitaire:'6.8', cout_ligne:'1.97', energie_kj:'0', energie_kcal:'0', proteines_g:'0', glucides_g:'0', sucres_g:'0', lipides_g:'0', ags_g:'0', sel_g:'0', fibres_g:'0', allergenes:'', mentions:'', format_export:'pdf' },
+    { id_production:'PROD-DEMO-022', date:'2026-05-15', recette_id:'REC-002', recette:'Lasagnes de legumes', lot_recette:'LAS-260515-A', poids_net:'359', dlc_ddm_type:'DLC', dlc_ddm:'2026-06-03', ingredient_id:'ING-011', ingredient:'Sauce tomate maison', lot_ingredient:'SAU-260515C', dlc_ddm_ingredient:'2026-06-03', poids_ingredient:'657', prix_unitaire:'2.6', cout_ligne:'1.71', energie_kj:'0', energie_kcal:'0', proteines_g:'0', glucides_g:'0', sucres_g:'0', lipides_g:'0', ags_g:'0', sel_g:'0', fibres_g:'0', allergenes:'', mentions:'', format_export:'pdf' },
+    { id_production:'PROD-DEMO-022', date:'2026-05-15', recette_id:'REC-002', recette:'Lasagnes de legumes', lot_recette:'LAS-260515-A', poids_net:'669', dlc_ddm_type:'DLC', dlc_ddm:'2026-06-03', ingredient_id:'ING-004', ingredient:'Creme liquide 30%', lot_ingredient:'CRE-260515A', dlc_ddm_ingredient:'2026-05-22', poids_ingredient:'565', prix_unitaire:'4.43', cout_ligne:'2.50', energie_kj:'0', energie_kcal:'0', proteines_g:'0', glucides_g:'0', sucres_g:'0', lipides_g:'0', ags_g:'0', sel_g:'0', fibres_g:'0', allergenes:'', mentions:'', format_export:'pdf' },
+    { id_production:'PROD-DEMO-023', date:'2026-06-18', recette_id:'REC-002', recette:'Lasagnes de legumes', lot_recette:'LAS-260618-D', poids_net:'615', dlc_ddm_type:'DLC', dlc_ddm:'2026-07-05', ingredient_id:'ING-011', ingredient:'Sauce tomate maison', lot_ingredient:'SAU-260618A', dlc_ddm_ingredient:'2026-06-27', poids_ingredient:'248', prix_unitaire:'2.6', cout_ligne:'0.65', energie_kj:'0', energie_kcal:'0', proteines_g:'0', glucides_g:'0', sucres_g:'0', lipides_g:'0', ags_g:'0', sel_g:'0', fibres_g:'0', allergenes:'', mentions:'', format_export:'pdf' },
+    { id_production:'PROD-DEMO-023', date:'2026-06-18', recette_id:'REC-002', recette:'Lasagnes de legumes', lot_recette:'LAS-260618-D', poids_net:'412', dlc_ddm_type:'DLC', dlc_ddm:'2026-07-05', ingredient_id:'ING-004', ingredient:'Creme liquide 30%', lot_ingredient:'CRE-260618C', dlc_ddm_ingredient:'2026-06-30', poids_ingredient:'253', prix_unitaire:'4.43', cout_ligne:'1.12', energie_kj:'0', energie_kcal:'0', proteines_g:'0', glucides_g:'0', sucres_g:'0', lipides_g:'0', ags_g:'0', sel_g:'0', fibres_g:'0', allergenes:'', mentions:'', format_export:'pdf' },
+    { id_production:'PROD-DEMO-024', date:'2026-06-26', recette_id:'REC-001', recette:'Salade quinoa poulet', lot_recette:'SAL-260626-D', poids_net:'519', dlc_ddm_type:'DLC', dlc_ddm:'2026-07-03', ingredient_id:'ING-001', ingredient:'Quinoa cuit', lot_ingredient:'QUI-260626D', dlc_ddm_ingredient:'2026-07-13', poids_ingredient:'730', prix_unitaire:'4.86', cout_ligne:'3.55', energie_kj:'0', energie_kcal:'0', proteines_g:'0', glucides_g:'0', sucres_g:'0', lipides_g:'0', ags_g:'0', sel_g:'0', fibres_g:'0', allergenes:'', mentions:'', format_export:'pdf' },
+    { id_production:'PROD-DEMO-024', date:'2026-06-26', recette_id:'REC-001', recette:'Salade quinoa poulet', lot_recette:'SAL-260626-D', poids_net:'771', dlc_ddm_type:'DLC', dlc_ddm:'2026-07-03', ingredient_id:'ING-002', ingredient:'Poulet roti eminces', lot_ingredient:'POU-260626B', dlc_ddm_ingredient:'2026-07-05', poids_ingredient:'377', prix_unitaire:'11.99', cout_ligne:'4.52', energie_kj:'0', energie_kcal:'0', proteines_g:'0', glucides_g:'0', sucres_g:'0', lipides_g:'0', ags_g:'0', sel_g:'0', fibres_g:'0', allergenes:'', mentions:'', format_export:'pdf' },
+    { id_production:'PROD-DEMO-024', date:'2026-06-26', recette_id:'REC-001', recette:'Salade quinoa poulet', lot_recette:'SAL-260626-D', poids_net:'714', dlc_ddm_type:'DLC', dlc_ddm:'2026-07-03', ingredient_id:'ING-003', ingredient:'Parmesan rape', lot_ingredient:'PAR-260626A', dlc_ddm_ingredient:'2026-07-13', poids_ingredient:'198', prix_unitaire:'18.53', cout_ligne:'3.66', energie_kj:'0', energie_kcal:'0', proteines_g:'0', glucides_g:'0', sucres_g:'0', lipides_g:'0', ags_g:'0', sel_g:'0', fibres_g:'0', allergenes:'', mentions:'', format_export:'pdf' },
+    { id_production:'PROD-DEMO-025', date:'2026-07-13', recette_id:'REC-004', recette:'Wrap poulet crudites', lot_recette:'WRP-260713-D', poids_net:'323', dlc_ddm_type:'DLC', dlc_ddm:'2026-07-31', ingredient_id:'ING-002', ingredient:'Poulet roti eminces', lot_ingredient:'POU-260713A', dlc_ddm_ingredient:'2026-07-28', poids_ingredient:'393', prix_unitaire:'11.73', cout_ligne:'4.61', energie_kj:'0', energie_kcal:'0', proteines_g:'0', glucides_g:'0', sucres_g:'0', lipides_g:'0', ags_g:'0', sel_g:'0', fibres_g:'0', allergenes:'', mentions:'', format_export:'pdf' },
+    { id_production:'PROD-DEMO-025', date:'2026-07-13', recette_id:'REC-004', recette:'Wrap poulet crudites', lot_recette:'WRP-260713-D', poids_net:'375', dlc_ddm_type:'DLC', dlc_ddm:'2026-07-31', ingredient_id:'ING-005', ingredient:'Tomate concassee', lot_ingredient:'TOM-260713B', dlc_ddm_ingredient:'2026-07-20', poids_ingredient:'480', prix_unitaire:'2.28', cout_ligne:'1.10', energie_kj:'0', energie_kcal:'0', proteines_g:'0', glucides_g:'0', sucres_g:'0', lipides_g:'0', ags_g:'0', sel_g:'0', fibres_g:'0', allergenes:'', mentions:'', format_export:'pdf' },
+    { id_production:'PROD-DEMO-025', date:'2026-07-13', recette_id:'REC-004', recette:'Wrap poulet crudites', lot_recette:'WRP-260713-D', poids_net:'629', dlc_ddm_type:'DLC', dlc_ddm:'2026-07-31', ingredient_id:'ING-012', ingredient:'Oignons eminces', lot_ingredient:'OIG-260713A', dlc_ddm_ingredient:'2026-07-29', poids_ingredient:'107', prix_unitaire:'2.05', cout_ligne:'0.22', energie_kj:'0', energie_kcal:'0', proteines_g:'0', glucides_g:'0', sucres_g:'0', lipides_g:'0', ags_g:'0', sel_g:'0', fibres_g:'0', allergenes:'', mentions:'', format_export:'pdf' },
+    { id_production:'PROD-DEMO-026', date:'2026-07-13', recette_id:'REC-001', recette:'Salade quinoa poulet', lot_recette:'SAL-260713-B', poids_net:'364', dlc_ddm_type:'DLC', dlc_ddm:'2026-08-01', ingredient_id:'ING-001', ingredient:'Quinoa cuit', lot_ingredient:'QUI-260713B', dlc_ddm_ingredient:'2026-07-31', poids_ingredient:'225', prix_unitaire:'5', cout_ligne:'1.12', energie_kj:'0', energie_kcal:'0', proteines_g:'0', glucides_g:'0', sucres_g:'0', lipides_g:'0', ags_g:'0', sel_g:'0', fibres_g:'0', allergenes:'', mentions:'', format_export:'pdf' },
+    { id_production:'PROD-DEMO-026', date:'2026-07-13', recette_id:'REC-001', recette:'Salade quinoa poulet', lot_recette:'SAL-260713-B', poids_net:'710', dlc_ddm_type:'DLC', dlc_ddm:'2026-08-01', ingredient_id:'ING-002', ingredient:'Poulet roti eminces', lot_ingredient:'POU-260713B', dlc_ddm_ingredient:'2026-07-26', poids_ingredient:'779', prix_unitaire:'11.73', cout_ligne:'9.14', energie_kj:'0', energie_kcal:'0', proteines_g:'0', glucides_g:'0', sucres_g:'0', lipides_g:'0', ags_g:'0', sel_g:'0', fibres_g:'0', allergenes:'', mentions:'', format_export:'pdf' },
+    { id_production:'PROD-DEMO-026', date:'2026-07-13', recette_id:'REC-001', recette:'Salade quinoa poulet', lot_recette:'SAL-260713-B', poids_net:'352', dlc_ddm_type:'DLC', dlc_ddm:'2026-08-01', ingredient_id:'ING-003', ingredient:'Parmesan rape', lot_ingredient:'PAR-260713D', dlc_ddm_ingredient:'2026-07-28', poids_ingredient:'219', prix_unitaire:'19.49', cout_ligne:'4.27', energie_kj:'0', energie_kcal:'0', proteines_g:'0', glucides_g:'0', sucres_g:'0', lipides_g:'0', ags_g:'0', sel_g:'0', fibres_g:'0', allergenes:'', mentions:'', format_export:'pdf' },
+    { id_production:'PROD-DEMO-027', date:'2026-07-09', recette_id:'REC-001', recette:'Salade quinoa poulet', lot_recette:'SAL-260709-C', poids_net:'912', dlc_ddm_type:'DLC', dlc_ddm:'2026-07-17', ingredient_id:'ING-001', ingredient:'Quinoa cuit', lot_ingredient:'QUI-260709B', dlc_ddm_ingredient:'2026-07-21', poids_ingredient:'165', prix_unitaire:'5', cout_ligne:'0.83', energie_kj:'0', energie_kcal:'0', proteines_g:'0', glucides_g:'0', sucres_g:'0', lipides_g:'0', ags_g:'0', sel_g:'0', fibres_g:'0', allergenes:'', mentions:'', format_export:'pdf' },
+    { id_production:'PROD-DEMO-027', date:'2026-07-09', recette_id:'REC-001', recette:'Salade quinoa poulet', lot_recette:'SAL-260709-C', poids_net:'731', dlc_ddm_type:'DLC', dlc_ddm:'2026-07-17', ingredient_id:'ING-002', ingredient:'Poulet roti eminces', lot_ingredient:'POU-260709C', dlc_ddm_ingredient:'2026-07-20', poids_ingredient:'143', prix_unitaire:'11.73', cout_ligne:'1.68', energie_kj:'0', energie_kcal:'0', proteines_g:'0', glucides_g:'0', sucres_g:'0', lipides_g:'0', ags_g:'0', sel_g:'0', fibres_g:'0', allergenes:'', mentions:'', format_export:'pdf' },
+    { id_production:'PROD-DEMO-027', date:'2026-07-09', recette_id:'REC-001', recette:'Salade quinoa poulet', lot_recette:'SAL-260709-C', poids_net:'488', dlc_ddm_type:'DLC', dlc_ddm:'2026-07-17', ingredient_id:'ING-003', ingredient:'Parmesan rape', lot_ingredient:'PAR-260709C', dlc_ddm_ingredient:'2026-07-28', poids_ingredient:'469', prix_unitaire:'19.49', cout_ligne:'9.15', energie_kj:'0', energie_kcal:'0', proteines_g:'0', glucides_g:'0', sucres_g:'0', lipides_g:'0', ags_g:'0', sel_g:'0', fibres_g:'0', allergenes:'', mentions:'', format_export:'pdf' },
+    { id_production:'PROD-DEMO-028', date:'2026-08-14', recette_id:'REC-001', recette:'Salade quinoa poulet', lot_recette:'SAL-260814-B', poids_net:'253', dlc_ddm_type:'DLC', dlc_ddm:'2026-08-22', ingredient_id:'ING-001', ingredient:'Quinoa cuit', lot_ingredient:'QUI-260814D', dlc_ddm_ingredient:'2026-09-01', poids_ingredient:'450', prix_unitaire:'5', cout_ligne:'2.25', energie_kj:'0', energie_kcal:'0', proteines_g:'0', glucides_g:'0', sucres_g:'0', lipides_g:'0', ags_g:'0', sel_g:'0', fibres_g:'0', allergenes:'', mentions:'', format_export:'pdf' },
+    { id_production:'PROD-DEMO-028', date:'2026-08-14', recette_id:'REC-001', recette:'Salade quinoa poulet', lot_recette:'SAL-260814-B', poids_net:'423', dlc_ddm_type:'DLC', dlc_ddm:'2026-08-22', ingredient_id:'ING-002', ingredient:'Poulet roti eminces', lot_ingredient:'POU-260814D', dlc_ddm_ingredient:'2026-08-31', poids_ingredient:'680', prix_unitaire:'11.73', cout_ligne:'7.98', energie_kj:'0', energie_kcal:'0', proteines_g:'0', glucides_g:'0', sucres_g:'0', lipides_g:'0', ags_g:'0', sel_g:'0', fibres_g:'0', allergenes:'', mentions:'', format_export:'pdf' },
+    { id_production:'PROD-DEMO-028', date:'2026-08-14', recette_id:'REC-001', recette:'Salade quinoa poulet', lot_recette:'SAL-260814-B', poids_net:'398', dlc_ddm_type:'DLC', dlc_ddm:'2026-08-22', ingredient_id:'ING-003', ingredient:'Parmesan rape', lot_ingredient:'PAR-260814C', dlc_ddm_ingredient:'2026-08-31', poids_ingredient:'116', prix_unitaire:'19.49', cout_ligne:'2.26', energie_kj:'0', energie_kcal:'0', proteines_g:'0', glucides_g:'0', sucres_g:'0', lipides_g:'0', ags_g:'0', sel_g:'0', fibres_g:'0', allergenes:'', mentions:'', format_export:'pdf' },
+    { id_production:'PROD-DEMO-029', date:'2026-08-13', recette_id:'REC-001', recette:'Salade quinoa poulet', lot_recette:'SAL-260813-A', poids_net:'780', dlc_ddm_type:'DLC', dlc_ddm:'2026-08-29', ingredient_id:'ING-001', ingredient:'Quinoa cuit', lot_ingredient:'QUI-260813C', dlc_ddm_ingredient:'2026-08-22', poids_ingredient:'417', prix_unitaire:'5', cout_ligne:'2.08', energie_kj:'0', energie_kcal:'0', proteines_g:'0', glucides_g:'0', sucres_g:'0', lipides_g:'0', ags_g:'0', sel_g:'0', fibres_g:'0', allergenes:'', mentions:'', format_export:'pdf' },
+    { id_production:'PROD-DEMO-029', date:'2026-08-13', recette_id:'REC-001', recette:'Salade quinoa poulet', lot_recette:'SAL-260813-A', poids_net:'338', dlc_ddm_type:'DLC', dlc_ddm:'2026-08-29', ingredient_id:'ING-002', ingredient:'Poulet roti eminces', lot_ingredient:'POU-260813B', dlc_ddm_ingredient:'2026-08-30', poids_ingredient:'135', prix_unitaire:'11.73', cout_ligne:'1.59', energie_kj:'0', energie_kcal:'0', proteines_g:'0', glucides_g:'0', sucres_g:'0', lipides_g:'0', ags_g:'0', sel_g:'0', fibres_g:'0', allergenes:'', mentions:'', format_export:'pdf' },
+    { id_production:'PROD-DEMO-029', date:'2026-08-13', recette_id:'REC-001', recette:'Salade quinoa poulet', lot_recette:'SAL-260813-A', poids_net:'918', dlc_ddm_type:'DLC', dlc_ddm:'2026-08-29', ingredient_id:'ING-003', ingredient:'Parmesan rape', lot_ingredient:'PAR-260813D', dlc_ddm_ingredient:'2026-08-21', poids_ingredient:'338', prix_unitaire:'19.49', cout_ligne:'6.59', energie_kj:'0', energie_kcal:'0', proteines_g:'0', glucides_g:'0', sucres_g:'0', lipides_g:'0', ags_g:'0', sel_g:'0', fibres_g:'0', allergenes:'', mentions:'', format_export:'pdf' },
+    { id_production:'PROD-DEMO-030', date:'2026-08-23', recette_id:'REC-004', recette:'Wrap poulet crudites', lot_recette:'WRP-260823-A', poids_net:'300', dlc_ddm_type:'DLC', dlc_ddm:'2026-09-01', ingredient_id:'ING-002', ingredient:'Poulet roti eminces', lot_ingredient:'POU-260823B', dlc_ddm_ingredient:'2026-09-04', poids_ingredient:'720', prix_unitaire:'11.73', cout_ligne:'8.45', energie_kj:'0', energie_kcal:'0', proteines_g:'0', glucides_g:'0', sucres_g:'0', lipides_g:'0', ags_g:'0', sel_g:'0', fibres_g:'0', allergenes:'', mentions:'', format_export:'pdf' },
+    { id_production:'PROD-DEMO-030', date:'2026-08-23', recette_id:'REC-004', recette:'Wrap poulet crudites', lot_recette:'WRP-260823-A', poids_net:'433', dlc_ddm_type:'DLC', dlc_ddm:'2026-09-01', ingredient_id:'ING-005', ingredient:'Tomate concassee', lot_ingredient:'TOM-260823B', dlc_ddm_ingredient:'2026-08-30', poids_ingredient:'620', prix_unitaire:'2.28', cout_ligne:'1.41', energie_kj:'0', energie_kcal:'0', proteines_g:'0', glucides_g:'0', sucres_g:'0', lipides_g:'0', ags_g:'0', sel_g:'0', fibres_g:'0', allergenes:'', mentions:'', format_export:'pdf' },
+    { id_production:'PROD-DEMO-030', date:'2026-08-23', recette_id:'REC-004', recette:'Wrap poulet crudites', lot_recette:'WRP-260823-A', poids_net:'562', dlc_ddm_type:'DLC', dlc_ddm:'2026-09-01', ingredient_id:'ING-012', ingredient:'Oignons eminces', lot_ingredient:'OIG-260823A', dlc_ddm_ingredient:'2026-09-02', poids_ingredient:'554', prix_unitaire:'1.89', cout_ligne:'1.05', energie_kj:'0', energie_kcal:'0', proteines_g:'0', glucides_g:'0', sucres_g:'0', lipides_g:'0', ags_g:'0', sel_g:'0', fibres_g:'0', allergenes:'', mentions:'', format_export:'pdf' }
   ];
-
   return { allergenes, fournisseurs, categories, ingredients, recettes, recetteDetails, resources, users, ciqual, planning, receptions, productions };
 })();
 
@@ -2024,6 +2235,8 @@ function hasModuleAccess(moduleName) {
     case 'production':
     case 'decision':
     case 'planning':
+    case 'stock':
+    case 'tableaudebord':
       return abo >= 3;
     default:
       return false;
@@ -2155,12 +2368,21 @@ function applyAbonnementRestrictions() {
   if (navReception) navReception.style.display = hasModuleAccess('reception') ? '' : 'none';
   if (navProduction) navProduction.style.display = hasModuleAccess('production') ? '' : 'none';
   if (navDecision) navDecision.style.display = hasModuleAccess('decision') ? '' : 'none';
+  const navStock = document.getElementById('nav-stock');
+  const navDashboard = document.getElementById('nav-tableaudebord');
+  const homeStock = document.getElementById('home-card-stock');
+  const homeDashboard = document.getElementById('home-card-dashboard');
+
   if (navPlanning) navPlanning.style.display = hasModuleAccess('planning') ? '' : 'none';
   if (navEquipe) navEquipe.style.display = hasModuleAccess('equipe') ? '' : 'none';
+  if (navStock) navStock.style.display = hasModuleAccess('stock') ? '' : 'none';
+  if (navDashboard) navDashboard.style.display = hasModuleAccess('tableaudebord') ? '' : 'none';
 
   if (homeReception) homeReception.style.display = hasModuleAccess('reception') ? '' : 'none';
   if (homeProduction) homeProduction.style.display = hasModuleAccess('production') ? '' : 'none';
   if (homeDecision) homeDecision.style.display = hasModuleAccess('decision') ? '' : 'none';
+  if (homeStock) homeStock.style.display = hasModuleAccess('stock') ? '' : 'none';
+  if (homeDashboard) homeDashboard.style.display = hasModuleAccess('tableaudebord') ? '' : 'none';
   if (homePlanning) homePlanning.style.display = hasModuleAccess('planning') ? '' : 'none';
   if (homeEquipe) homeEquipe.style.display = hasModuleAccess('equipe') ? '' : 'none';
 
@@ -2349,7 +2571,7 @@ function showPage(p) {
     p = 'accueil';
   }
 
-  ['accueil','recettes','ingredients','fournisseurs','reception','production','decision','planning'].forEach(name => {
+  ['accueil','recettes','ingredients','fournisseurs','reception','production','decision','planning','stock','tableaudebord'].forEach(name => {
     const el = document.getElementById('page' + name.charAt(0).toUpperCase() + name.slice(1));
     if (el) el.style.display = p === name ? 'block' : 'none';
 
@@ -2367,6 +2589,14 @@ function showPage(p) {
 
   if (p === 'production') {
     initProductionPage();
+  }
+
+  if (p === 'stock') {
+    setTimeout(() => initStockPage(), 50);
+  }
+
+  if (p === 'tableaudebord') {
+    setTimeout(() => initDashboardPage(), 50);
   }
 
   if (p === 'planning') {
@@ -2426,7 +2656,8 @@ function addReceptionLine(line = {}) {
     temperature: line.temperature || '',
     conformite: line.conformite || 'Conforme',
     action: line.action || '',
-    regle: line.regle || 'Non-réglé'
+    regle: line.regle || 'Non-réglé',
+    prix: line.prix || ''
   });
   renderReceptionDraft();
 }
@@ -2499,6 +2730,7 @@ function renderReceptionDraft() {
           ${['DLC','DDM'].map(v => `<option value="${v}" ${line.dlc_ddm_type===v?'selected':''}>${v}</option>`).join('')}
         </select></div>
         <div class="form-group"><label class="form-label">DLC/DDM</label><input class="form-input" type="date" value="${escHtml(line.dlc_ddm)}" onchange="syncReceptionLine(${idx},'dlc_ddm',this.value)"></div>
+        <div class="form-group"><label class="form-label">Prix unitaire (€)</label><input class="form-input" type="number" step="0.01" min="0" value="${escHtml(String(line.prix || ''))}" oninput="syncReceptionLine(${idx},'prix',this.value)" placeholder="0.00" style="width:120px"></div>
         <div class="form-group"><label class="form-label">Conformite</label><select class="form-select" ${tempBad ? 'disabled' : ''} onchange="syncReceptionLine(${idx},'conformite',this.value)">
           ${['Conforme','Non conforme'].map(v => `<option value="${v}" ${conf===v?'selected':''}>${v}</option>`).join('')}
         </select>${tempBad ? '<div class="text-xs text-muted mt-2">Temperature hors limite</div>' : ''}</div>
@@ -2528,7 +2760,8 @@ async function saveReceptionBL() {
     dlc_ddm_type: line.dlc_ddm_type, dlc_ddm: line.dlc_ddm,
     temperature: line.temperature,
     temperature_cible: receptionTempLimit(line.type_produit).label,
-    conformite: line.conformite, action: line.action, regle: line.regle
+    conformite: line.conformite, action: line.action, regle: line.regle,
+    prix: line.prix || ''
   }));
   RECEPTIONS = optimistic.concat(RECEPTIONS.filter(r => r.id_bl !== recEditingBlId));
   renderReceptionsList();
@@ -2580,7 +2813,8 @@ function editReceptionBL(idBl) {
     temperature: r.temperature || '',
     conformite: r.conformite || 'Conforme',
     action: r.action || '',
-    regle: r.regle || 'Non-réglé'
+    regle: r.regle || 'Non-réglé',
+    prix: r.prix || 0
   }));
   renderReceptionDraft();
   document.getElementById('receptionFormCard')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
@@ -5892,6 +6126,7 @@ if ('serviceWorker' in navigator) {
     pageRecettes:     () => typeof openModalRecette    === 'function' && openModalRecette(),
     pageIngredients:  () => typeof openModalIngredient === 'function' && openModalIngredient(),
     pageFournisseurs: () => typeof openModalFournisseur=== 'function' && openModalFournisseur(),
+    pageStock:        () => typeof openModalAddStockEntry === 'function' && openModalAddStockEntry(),
   };
 
   window.fabAction = function() {
@@ -6755,5 +6990,606 @@ function savePlanningTaskOld() {
     </div>
   </div>
 </div>
+
+<!-- ════════════════════════════════════════
+     MODULE STOCK  (Abonnement 3)
+     injecté dans le fichier démo
+═════════════════════════════════════════ -->
+<script>
+// ════════════════════════════════════════════
+//  MODULE STOCK  (Abonnement 3)
+// ════════════════════════════════════════════
+
+function stockQtyToGrams(qty, unite) {
+  const u = (unite || '').trim().toLowerCase();
+  if (u === 'kg' || u === 'kilo' || u === 'kilos') return qty * 1000;
+  if (u === 'l' || u === 'litre' || u === 'litres') return qty * 1000;
+  return qty;
+}
+function gramsToStockQty(grams, unite) {
+  const u = (unite || '').trim().toLowerCase();
+  if (u === 'kg' || u === 'kilo' || u === 'kilos') return grams / 1000;
+  if (u === 'l' || u === 'litre' || u === 'litres') return grams / 1000;
+  return grams;
+}
+
+function autoAllocateLotsFIFO(ing, neededQty, stockLotsMap) {
+  const key = String(ing.nom || '').trim().toLowerCase();
+  const lots = (stockLotsMap[key] || [])
+    .filter(s => s.quantite > 0)
+    .sort((a, b) => {
+      const da = parseDateStock(a.dlc_ddm);
+      const db = parseDateStock(b.dlc_ddm);
+      if (!da && !db) return 0;
+      if (!da) return 1;
+      if (!db) return -1;
+      return da - db;
+    });
+  let reste = neededQty;
+  const allocations = [];
+  for (const s of lots) {
+    if (reste <= 0) break;
+    const dispo = stockQtyToGrams(s.quantite, s.unite);
+    const pris = Math.min(dispo, reste);
+    const displayUnite = dispo !== s.quantite ? 'g' : s.unite;
+    const stockQty = gramsToStockQty(pris, s.unite);
+    allocations.push({
+      ingId: ing.id, ingNom: ing.nom, stockId: s.id_stock,
+      lot: s.lot, dlc: s.dlc_ddm,
+      qty: pris, stockQty: stockQty, stockUnite: s.unite,
+      unite: displayUnite, maxQty: dispo,
+      prix_unitaire: parseFloat(String(s.prix_unitaire || '0').replace(',', '.')) || 0
+    });
+    reste -= pris;
+  }
+  return { allocations, manque: reste > 0 ? reste : 0 };
+}
+
+function parseDateStock(str) {
+  if (!str) return null;
+  const s = String(str).trim();
+  const m1 = s.match(/^(\d{4})[\/-](\d{1,2})[\/-](\d{1,2})$/);
+  if (m1) return new Date(parseInt(m1[1]), parseInt(m1[2])-1, parseInt(m1[3])).getTime();
+  const m2 = s.match(/^(\d{1,2})[\/-](\d{1,2})[\/-](\d{4})$/);
+  if (m2) return new Date(parseInt(m2[3]), parseInt(m2[2])-1, parseInt(m2[1])).getTime();
+  const d = new Date(s);
+  return isNaN(d.getTime()) ? null : d.getTime();
+}
+
+function initStockPage() {
+  if (!document.getElementById('pageStock')) {
+    const main = document.querySelector('.main');
+    if (!main) return;
+    const div = document.createElement('div');
+    div.id = 'pageStock';
+    div.innerHTML = `
+      <div class="page-header">
+        <div class="page-title"><span>📦</span> Gestion des Stocks</div>
+      </div>
+      <div class="stock-alert-bar" id="stockStatCards">
+        <div class="stat-card"><div class="stat-num">—</div><div class="stat-label">Produits</div></div>
+        <div class="stat-card"><div class="stat-num">—</div><div class="stat-label">Lots en stock</div></div>
+        <div class="stat-card"><div class="stat-num">—</div><div class="stat-label">Unités totales</div></div>
+        <div class="stat-card"><div class="stat-num">—</div><div class="stat-label">DLC < 14 jours</div></div>
+      </div>
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title">📋 Inventaire</div>
+          <div class="flex gap-2">
+            <div class="search-wrap"><input class="form-input" id="searchStock" placeholder="Rechercher..." oninput="renderStock()"></div>
+            <select class="form-select" id="filterStockProduit" onchange="renderStock()" style="width:auto">
+              <option value="">Tous les produits</option>
+            </select>
+            <button class="btn btn-secondary btn-sm" onclick="exportStockCsv()" title="Exporter en CSV">⬇️ CSV</button>
+          </div>
+        </div>
+        <div class="card-body" style="padding:0">
+          <div class="table-wrap">
+            <table>
+              <thead><tr><th>Produit</th><th>N° Lot</th><th>DLC/DDM</th><th>Quantité</th><th>Fournisseur</th><th>Date entrée</th><th>Actions</th></tr></thead>
+              <tbody id="stockBody"></tbody>
+            </table>
+          </div>
+          <div id="stockLoading" class="skel-spinner-wrap" style="display:flex">
+            <div class="skel-spinner"></div>
+            <div class="skel-spinner-label">Chargement des stocks...</div>
+          </div>
+        </div>
+      </div>
+      <div class="card mt-3">
+        <div class="card-header">
+          <div class="card-title">📦 Produits en stock</div>
+        </div>
+        <div class="card-body" id="stockProduitsBody"></div>
+      </div>
+    `;
+    main.appendChild(div);
+  }
+  // Ajouter nav-item stock s'il n'existe pas
+  if (!document.getElementById('nav-stock')) {
+    const navReception = document.getElementById('nav-reception');
+    if (navReception) {
+      const nav = document.createElement('div');
+      nav.className = 'nav-item';
+      nav.id = 'nav-stock';
+      nav.onclick = function() { showPage('stock'); };
+      nav.innerHTML = '<span class="icon">📦</span> Stock';
+      navReception.parentNode.insertBefore(nav, navReception.nextSibling);
+    }
+  }
+  loadStock();
+}
+
+async function loadStock() {
+  const loading = document.getElementById('stockLoading');
+  if (loading) loading.style.display = 'flex';
+  STOCK_DATA = [
+    { id_stock:'STK-001', produit:'Quinoa cuit', lot:'QUI-160426-A', dlc_ddm:'2026-04-22', dlc_ddm_type:'DLC', quantite:10, unite:'kg', date_entree:'2026-04-16', fournisseur:'Metro Marseille', id_bl:'BL-DEMO-005', type_produit:'Surgele', observations:'Lot A', prix_unitaire:4.60 },
+    { id_stock:'STK-002', produit:'Quinoa cuit', lot:'QUI-180426-B', dlc_ddm:'2026-04-24', dlc_ddm_type:'DLC', quantite:8, unite:'kg', date_entree:'2026-04-18', fournisseur:'Metro Marseille', id_bl:'BL-DEMO-005', type_produit:'Surgele', observations:'Lot B', prix_unitaire:4.60 },
+    { id_stock:'STK-003', produit:'Poulet roti eminces', lot:'POU-0426-S2', dlc_ddm:'2026-05-08', dlc_ddm_type:'DLC', quantite:25, unite:'kg', date_entree:'2026-04-19', fournisseur:'Metro Marseille', id_bl:'BL-DEMO-002', type_produit:'Surgele', observations:'', prix_unitaire:11.80 },
+    { id_stock:'STK-004', produit:'Poulet roti eminces', lot:'POU-190426-A', dlc_ddm:'2026-04-23', dlc_ddm_type:'DLC', quantite:15, unite:'kg', date_entree:'2026-04-19', fournisseur:'Metro Marseille', id_bl:'BL-DEMO-002', type_produit:'Surgele', observations:'', prix_unitaire:11.80 },
+    { id_stock:'STK-005', produit:'Parmesan rape', lot:'PAR-120426-C', dlc_ddm:'2026-05-10', dlc_ddm_type:'DDM', quantite:4, unite:'kg', date_entree:'2026-04-12', fournisseur:'Maison Italiana', id_bl:'BL-DEMO-004', type_produit:'Sec', observations:'', prix_unitaire:18.40 },
+    { id_stock:'STK-006', produit:'Parmesan rape', lot:'PAR-220426', dlc_ddm:'2026-06-22', dlc_ddm_type:'DDM', quantite:3, unite:'kg', date_entree:'2026-04-22', fournisseur:'Moulin des Alpilles', id_bl:'BL-DEMO-004', type_produit:'Sec', observations:'Autre fournisseur test', prix_unitaire:18.40 },
+    { id_stock:'STK-007', produit:'Creme liquide 30%', lot:'CRE-200426', dlc_ddm:'2026-04-28', dlc_ddm_type:'DLC', quantite:10, unite:'L', date_entree:'2026-04-20', fournisseur:'Laiterie du Verdon', id_bl:'BL-DEMO-003', type_produit:'Frais', observations:'', prix_unitaire:4.20 },
+    { id_stock:'STK-008', produit:'Tomate concassee', lot:'TOM-180426', dlc_ddm:'2027-02-10', dlc_ddm_type:'DDM', quantite:12, unite:'kg', date_entree:'2026-04-18', fournisseur:'Primeur du Sud', id_bl:'BL-DEMO-001', type_produit:'Frais', observations:'', prix_unitaire:2.10 },
+    { id_stock:'STK-009', produit:'Oignons eminces', lot:'OIG-180426', dlc_ddm:'2026-04-24', dlc_ddm_type:'DLC', quantite:18, unite:'kg', date_entree:'2026-04-18', fournisseur:'Primeur du Sud', id_bl:'BL-DEMO-001', type_produit:'Frais', observations:'', prix_unitaire:1.80 },
+    { id_stock:'STK-010', produit:'Farine de ble', lot:'FAR-220426-A', dlc_ddm:'2026-10-22', dlc_ddm_type:'DDM', quantite:22, unite:'kg', date_entree:'2026-04-22', fournisseur:'Moulin des Alpilles', id_bl:'BL-DEMO-004', type_produit:'Sec', observations:'', prix_unitaire:1.40 },
+    { id_stock:'STK-011', produit:'Noisettes concassees', lot:'NOI-230426', dlc_ddm:'2027-04-23', dlc_ddm_type:'DDM', quantite:2, unite:'kg', date_entree:'2026-04-23', fournisseur:'Metro Marseille', id_bl:'BL-DEMO-005', type_produit:'Sec', observations:'', prix_unitaire:12.60 },
+    { id_stock:'STK-012', produit:'Beurre doux', lot:'BEU-200426', dlc_ddm:'2026-05-10', dlc_ddm_type:'DLC', quantite:6, unite:'kg', date_entree:'2026-04-20', fournisseur:'Laiterie du Verdon', id_bl:'BL-DEMO-003', type_produit:'Frais', observations:'', prix_unitaire:8.70 }
+  ];
+  renderStock();
+}
+
+function renderStock() {
+  const tbody = document.getElementById('stockBody');
+  if (!tbody) return;
+  const loading = document.getElementById('stockLoading');
+  if (loading) loading.style.display = 'none';
+  const q = (document.getElementById('searchStock')?.value || '').toLowerCase();
+  const filterProduit = document.getElementById('filterStockProduit')?.value || '';
+  let items = STOCK_DATA.filter(s => s.quantite > 0);
+  if (q) items = items.filter(s => (s.produit + ' ' + s.lot + ' ' + s.fournisseur).toLowerCase().includes(q));
+  if (filterProduit) items = items.filter(s => s.produit === filterProduit);
+  const totalProduits = [...new Set(items.map(s => s.produit))].length;
+  const totalLots = items.length;
+  const totalQte = items.reduce((acc, s) => acc + (s.quantite || 0), 0);
+  const alerteDLC = items.filter(s => { if (!s.dlc_ddm) return false; const d = parseDateStock(s.dlc_ddm); return d && (d - Date.now()) < 14 * 24 * 60 * 60 * 1000 && (d - Date.now()) > 0; }).length;
+  document.getElementById('stockStatCards').innerHTML = `
+    <div class="stat-card"><div class="stat-num">${totalProduits}</div><div class="stat-label">Produits</div></div>
+    <div class="stat-card"><div class="stat-num">${totalLots}</div><div class="stat-label">Lots en stock</div></div>
+    <div class="stat-card"><div class="stat-num">${totalQte.toFixed(1)}</div><div class="stat-label">Unités totales</div></div>
+    <div class="stat-card ${alerteDLC ? 'stock-alert-dlc' : ''}"><div class="stat-num">${alerteDLC}</div><div class="stat-label">DLC < 14 jours</div></div>`;
+  const filterSel = document.getElementById('filterStockProduit');
+  if (filterSel) {
+    const produits = [...new Set(STOCK_DATA.filter(s => s.quantite > 0).map(s => s.produit))].sort();
+    filterSel.innerHTML = '<option value="">Tous les produits</option>' + produits.map(p => `<option value="${escHtml(p)}">${escHtml(p)}</option>`).join('');
+  }
+  if (!items.length) {
+    tbody.innerHTML = '<tr><td colspan="7"><div class="empty"><p>Aucun stock</p></div></td></tr>';
+    document.getElementById('stockProduitsBody').innerHTML = '<div class="empty"><p>Aucun produit</p></div>';
+    return;
+  }
+  items.sort((a, b) => {
+    if (a.produit !== b.produit) return a.produit.localeCompare(b.produit);
+    const da = parseDateStock(a.dlc_ddm), db = parseDateStock(b.dlc_ddm);
+    if (!da && !db) return 0; if (!da) return 1; if (!db) return -1;
+    return da - db;
+  });
+  tbody.innerHTML = items.map(s => {
+    const dlcAlerte = isDlcAlert(s.dlc_ddm);
+    const dlcDepassee = isDlcDepassee(s.dlc_ddm);
+    return `<tr><td class="td-name">${escHtml(s.produit)}</td><td>${escHtml(s.lot)}</td><td><span class="badge ${dlcDepassee ? 'badge-danger' : dlcAlerte ? 'badge-orange' : 'badge-blue'}">${s.dlc_ddm || '—'}</span>${dlcDepassee ? '<span style="color:var(--danger);font-size:10px;display:block">⚠️ DLC dépassée</span>' : ''}</td><td><strong>${s.quantite} ${s.unite}</strong></td><td>${escHtml(s.fournisseur || '—')}</td><td>${s.date_entree || '—'}</td><td style="white-space:nowrap"><button class="btn btn-secondary btn-sm" onclick="openModalAdjustStock('${escHtml(s.id_stock)}')">✏️ Ajuster</button></td></tr>`;
+  }).join('');
+  const produitsMap = {};
+  items.forEach(s => { if (!produitsMap[s.produit]) produitsMap[s.produit] = { produit: s.produit, lots: 0, qte: 0, unite: s.unite }; produitsMap[s.produit].lots++; produitsMap[s.produit].qte += s.quantite; });
+  const produits = Object.values(produitsMap);
+  document.getElementById('stockProduitsBody').innerHTML = produits.map(p =>
+    `<div class="stock-produit-row"><div class="stock-produit-nom"><strong>${escHtml(p.produit)}</strong></div><div class="stock-produit-lots">${p.lots} lot${p.lots > 1 ? 's' : ''}</div><div class="stock-produit-qte">${p.qte.toFixed(1)} ${p.unite}</div></div>`
+  ).join('') || '<div class="empty"><p>Aucun produit</p></div>';
+}
+
+function isDlcAlert(str) {
+  const t = parseDateStock(str);
+  if (!t) return false;
+  const now = Date.now();
+  return t > now && (t - now) < 14 * 24 * 60 * 60 * 1000;
+}
+function isDlcDepassee(str) {
+  const t = parseDateStock(str);
+  if (!t) return false;
+  return t < Date.now();
+}
+
+let editingStockId = '';
+
+function openModalAdjustStock(stockId) {
+  const item = STOCK_DATA.find(s => s.id_stock === stockId);
+  if (!item) return;
+  editingStockId = stockId;
+  const modal = document.getElementById('modalStock');
+  if (!modal) createStockModal();
+  document.getElementById('modalStock').classList.add('open');
+  document.getElementById('stkProduit').textContent = item.produit + ' - Lot ' + item.lot;
+  document.getElementById('stkQteActuelle').textContent = item.quantite + ' ' + item.unite;
+  document.getElementById('stkNewQte').value = item.quantite;
+  document.getElementById('stkObservations').value = '';
+}
+
+function openModalAddStockEntry() {
+  editingStockId = '';
+  const modal = document.getElementById('modalStock');
+  if (!modal) createStockModal();
+  document.getElementById('modalStock').classList.add('open');
+  document.getElementById('stkProduit').textContent = 'Nouvelle entrée';
+  document.getElementById('stkQteActuelle').textContent = '—';
+  document.getElementById('stkNewQte').value = '';
+  document.getElementById('stkObservations').value = '';
+  document.querySelectorAll('#stkNewFields input, #stkNewFields select').forEach(el => el.value = '');
+  document.getElementById('stkNewFields').style.display = 'block';
+}
+
+function createStockModal() {
+  const div = document.createElement('div');
+  div.id = 'modalStock';
+  div.className = 'modal-overlay';
+  div.innerHTML = `
+    <div class="modal">
+      <div class="modal-title">📦 Ajustement stock</div>
+      <div class="form-group"><label class="form-label">Produit / Lot</label><div id="stkProduit" style="font-weight:700;font-size:15px"></div></div>
+      <div class="form-group"><label class="form-label">Quantité actuelle</label><div id="stkQteActuelle" style="font-weight:700;font-size:18px;color:var(--g3)"></div></div>
+      <div class="form-group"><label class="form-label">Nouvelle quantité *</label><input class="form-input" id="stkNewQte" type="number" step="any" placeholder="0"></div>
+      <div class="form-group" id="stkNewFields" style="display:none">
+        <div class="form-row"><div class="form-group"><label class="form-label">Produit *</label><input class="form-input" id="stkNewProduit" placeholder="Nom du produit"></div><div class="form-group"><label class="form-label">N° Lot *</label><input class="form-input" id="stkNewLot" placeholder="N° de lot"></div></div>
+        <div class="form-row"><div class="form-group"><label class="form-label">Unité</label><select class="form-select" id="stkNewUnite">${['kg','g','L','mL','pièce'].map(v => `<option value="${v}">${v}</option>`).join('')}</select></div><div class="form-group"><label class="form-label">DLC/DDM</label><input class="form-input" id="stkNewDlc" type="date"></div></div>
+        <div class="form-group"><label class="form-label">DLC/DDM type</label><select class="form-select" id="stkNewDlcType"><option value="DLC">DLC</option><option value="DDM">DDM</option></select></div>
+        <div class="form-group"><label class="form-label">Fournisseur</label><input class="form-input" id="stkNewFournisseur" placeholder="Nom du fournisseur"></div>
+      </div>
+      <div class="form-group"><label class="form-label">Observations</label><input class="form-input" id="stkObservations" placeholder="Motif de l'ajustement..."></div>
+      <div class="modal-actions">
+        <button class="btn btn-secondary" onclick="closeModalAdjustStock()">Annuler</button>
+        <button class="btn btn-primary" onclick="saveStockAdjustment()">💾 Enregistrer</button>
+      </div>
+    </div>`;
+  div.addEventListener('click', function(e) { if (e.target === this) closeModalAdjustStock(); });
+  document.body.appendChild(div);
+}
+
+function closeModalAdjustStock() {
+  document.getElementById('modalStock')?.classList.remove('open');
+  document.getElementById('stkNewFields').style.display = 'none';
+}
+
+async function saveStockAdjustment() {
+  const newQte = parseFloat(document.getElementById('stkNewQte').value) || 0;
+  const obs = document.getElementById('stkObservations').value.trim();
+  if (editingStockId) {
+    if (newQte < 0) { toast('La quantité ne peut pas être négative', 'error'); return; }
+    const idx = STOCK_DATA.findIndex(s => s.id_stock === editingStockId);
+    let oldQte = 0, oldObs = '';
+    if (idx >= 0) { oldQte = STOCK_DATA[idx].quantite; oldObs = STOCK_DATA[idx].observations || ''; STOCK_DATA[idx].quantite = newQte; if (obs) STOCK_DATA[idx].observations = oldObs ? oldObs + '; ' + obs : obs; }
+    closeModalAdjustStock(); renderStock();
+    toast('Stock ajusté (démo)', 'success');
+  } else {
+    const produit = document.getElementById('stkNewProduit').value.trim();
+    const lot = document.getElementById('stkNewLot').value.trim();
+    if (!produit || !lot) { toast('Produit et lot requis', 'error'); return; }
+    const tempId = 'TEMP-' + Date.now();
+    STOCK_DATA.push({ id_stock: tempId, produit, lot, dlc_ddm: document.getElementById('stkNewDlc').value, dlc_ddm_type: document.getElementById('stkNewDlcType').value, quantite: newQte, unite: document.getElementById('stkNewUnite').value, date_entree: todayISO(), fournisseur: document.getElementById('stkNewFournisseur').value.trim(), id_bl: '', type_produit: '', observations: obs || 'Ajustement manuel', prix_unitaire: 0 });
+    closeModalAdjustStock(); renderStock();
+    toast('Entrée stock ajoutée (démo)', 'success');
+  }
+}
+
+function exportStockCsv() {
+  const items = STOCK_DATA.filter(s => s.quantite > 0);
+  if (!items.length) { toast('Aucun stock à exporter', 'error'); return; }
+  const headers = ['Produit','N° Lot','DLC/DDM','Type DLC/DDM','Quantite','Unite','Date entree','Fournisseur','Observations'];
+  const values = items.map(s => [s.produit, s.lot, s.dlc_ddm, s.dlc_ddm_type, s.quantite, s.unite, s.date_entree, s.fournisseur, s.observations]);
+  const csv = [headers, ...values].map(row => row.map(csvEscape).join(';')).join('\n');
+  const blob = new Blob(['\ufeff' + csv], { type:'text/csv;charset=utf-8' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'stock-' + new Date().toISOString().slice(0,10) + '.csv';
+  a.click();
+  URL.revokeObjectURL(a.href);
+  toast('Export CSV terminé', 'success');
+}
+
+// ════════════════════════════════════════════
+//  MODULE DASHBOARD — Tableau de Bord (Abonnement 3)
+// ════════════════════════════════════════════
+
+function initDashboardPage() {
+  if (DASHBOARD_INITIALIZED) { renderDashboardCharts(); return; }
+  if (!document.getElementById('pageTableaudebord')) {
+    const main = document.querySelector('.main');
+    if (!main) return;
+    const div = document.createElement('div');
+    div.id = 'pageTableaudebord';
+    div.innerHTML = `
+      <div class="page-header"><div class="page-title"><span>📈</span> Tableau de Bord</div></div>
+      <div class="card mb-3">
+        <div class="card-header"><div class="card-title">🔍 Filtres</div></div>
+        <div class="card-body">
+          <div style="display:flex;flex-wrap:wrap;gap:12px;align-items:end">
+            <div><label style="font-size:11px;font-weight:600;color:var(--text3);display:block;margin-bottom:4px">Période</label><select class="form-select" id="dashYear" onchange="renderDashboardCharts()" style="width:auto"><option value="">Toutes les années</option></select></div>
+            <div><label style="font-size:11px;font-weight:600;color:var(--text3);display:block;margin-bottom:4px">Mois</label><select class="form-select" id="dashMonth" onchange="renderDashboardCharts()" style="width:auto"><option value="">Tous les mois</option>${['Janvier','Février','Mars','Avril','Mai','Juin','Juillet','Août','Septembre','Octobre','Novembre','Décembre'].map((m,i) => `<option value="${String(i+1).padStart(2,'0')}">${m}</option>`).join('')}</select></div>
+            <div><label style="font-size:11px;font-weight:600;color:var(--text3);display:block;margin-bottom:4px">Ingrédient</label><select class="form-select" id="dashIngredient" onchange="renderDashboardCharts()" style="width:200px"><option value="">Tous les ingrédients</option></select></div>
+            <div><label style="font-size:11px;font-weight:600;color:var(--text3);display:block;margin-bottom:4px">Recette</label><select class="form-select" id="dashRecette" onchange="renderDashboardCharts()" style="width:200px"><option value="">Toutes les recettes</option></select></div>
+            <button class="btn btn-secondary btn-sm" onclick="exportDashboardCsv()">⬇️ CSV</button>
+          </div>
+        </div>
+      </div>
+      <div class="card mb-3">
+        <div class="card-header"><div class="card-title">🥦 Évolution du prix des ingrédients</div></div>
+        <div class="card-body">
+          <div id="dashIngChartContainer" style="position:relative;width:100%;min-height:360px">
+            <canvas id="dashIngChart" style="width:100%;height:340px"></canvas>
+          </div>
+          <div id="dashIngNoData" style="display:none;text-align:center;padding:40px;color:var(--text3)"><div style="font-size:32px;margin-bottom:8px">📊</div><div>Aucune donnée de prix pour la période sélectionnée</div></div>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-header"><div class="card-title">🍽️ Évolution du coût des recettes</div></div>
+        <div class="card-body">
+          <div id="dashRecChartContainer" style="position:relative;width:100%;min-height:360px">
+            <canvas id="dashRecChart" style="width:100%;height:340px"></canvas>
+          </div>
+          <div id="dashRecNoData" style="display:none;text-align:center;padding:40px;color:var(--text3)"><div style="font-size:32px;margin-bottom:8px">📊</div><div>Aucune donnée de coût pour la période sélectionnée</div></div>
+        </div>
+      </div>`;
+    main.appendChild(div);
+    if (RECEPTIONS.length) {
+      const years = [...new Set(RECEPTIONS.map(r => r.date ? r.date.slice(0,4) : '').filter(Boolean))].sort();
+      const yearSel = document.getElementById('dashYear');
+      years.forEach(y => { const o = document.createElement('option'); o.value = y; o.textContent = y; yearSel.appendChild(o); });
+      const ings = [...new Set(RECEPTIONS.filter(r => r.prix && parseFloat(String(r.prix).replace(',','.')) > 0).map(r => r.produit).filter(Boolean))].sort();
+      const ingSel = document.getElementById('dashIngredient');
+      ings.forEach(p => { const o = document.createElement('option'); o.value = p; o.textContent = p; ingSel.appendChild(o); });
+    }
+    if (PRODUCTIONS.length) {
+      const recs = [...new Set(PRODUCTIONS.filter(r => r.cout_ligne && parseFloat(String(r.cout_ligne).replace(',','.')) > 0).map(r => r.recette).filter(Boolean))].sort();
+      const recSel = document.getElementById('dashRecette');
+      recs.forEach(r => { const o = document.createElement('option'); o.value = r; o.textContent = r; recSel.appendChild(o); });
+    }
+    DASHBOARD_INITIALIZED = true;
+  }
+  renderDashboardCharts();
+}
+
+let dashResizeTimer = null;
+window.addEventListener('resize', function() {
+  const page = document.getElementById('pageTableaudebord');
+  if (!page || page.style.display === 'none') return;
+  clearTimeout(dashResizeTimer);
+  dashResizeTimer = setTimeout(function() { renderDashboardCharts(); }, 200);
+});
+
+function getMonthYear(dateStr) {
+  if (!dateStr) return null;
+  const parts = dateStr.split('-');
+  if (parts.length < 2) return null;
+  return { year: parts[0], month: parts[1] };
+}
+
+function renderDashboardCharts() {
+  const year = document.getElementById('dashYear')?.value || '';
+  const month = document.getElementById('dashMonth')?.value || '';
+  const filterIng = (document.getElementById('dashIngredient')?.value || '').toLowerCase();
+  const filterRec = (document.getElementById('dashRecette')?.value || '').toLowerCase();
+  renderIngredientChart(year, month, filterIng);
+  renderRecipeChart(year, month, filterRec);
+}
+
+function renderIngredientChart(year, month, filterIng) {
+  const canvas = document.getElementById('dashIngChart');
+  const container = document.getElementById('dashIngChartContainer');
+  const noData = document.getElementById('dashIngNoData');
+  if (!canvas || !container || !noData) return;
+  let data = RECEPTIONS.filter(r => r.prix && parseFloat(String(r.prix).replace(',','.')) > 0);
+  if (year) data = data.filter(r => r.date && r.date.slice(0,4) === year);
+  if (month) data = data.filter(r => r.date && r.date.slice(5,7) === month);
+  if (filterIng) data = data.filter(r => (r.produit || '').toLowerCase() === filterIng);
+  if (!data.length) { canvas.style.display = 'none'; noData.style.display = 'block'; return; }
+  canvas.style.display = 'block'; noData.style.display = 'none';
+  const groups = {};
+  data.forEach(r => {
+    const my = getMonthYear(r.date);
+    if (!my) return;
+    const key = (r.produit || 'Inconnu') + '|' + my.year + '-' + my.month;
+    if (!groups[key]) groups[key] = { sum: 0, count: 0, produit: r.produit || 'Inconnu', year: my.year, month: my.month };
+    groups[key].sum += parseFloat(String(r.prix).replace(',','.'));
+    groups[key].count++;
+  });
+  const series = {};
+  Object.values(groups).forEach(g => {
+    const p = g.produit;
+    if (!series[p]) series[p] = [];
+    series[p].push({ label: g.month + '/' + g.year, x: g.year + '-' + g.month, y: g.sum / g.count });
+  });
+  Object.values(series).forEach(s => s.sort((a, b) => a.x.localeCompare(b.x)));
+  drawLineChart(canvas, series, 'Prix unitaire moyen (€)', container);
+}
+
+function renderRecipeChart(year, month, filterRec) {
+  const canvas = document.getElementById('dashRecChart');
+  const container = document.getElementById('dashRecChartContainer');
+  const noData = document.getElementById('dashRecNoData');
+  if (!canvas || !container || !noData) return;
+  let data = PRODUCTIONS.filter(r => r.cout_ligne && parseFloat(String(r.cout_ligne).replace(',','.')) > 0);
+  if (year) data = data.filter(r => r.date && r.date.slice(0,4) === year);
+  if (month) data = data.filter(r => r.date && r.date.slice(5,7) === month);
+  if (filterRec) data = data.filter(r => (r.recette || '').toLowerCase() === filterRec);
+  if (!data.length) { canvas.style.display = 'none'; noData.style.display = 'block'; return; }
+  canvas.style.display = 'block'; noData.style.display = 'none';
+  const groups = {};
+  data.forEach(r => {
+    const my = getMonthYear(r.date);
+    if (!my) return;
+    const key = (r.recette || 'Inconnue') + '|' + my.year + '-' + my.month;
+    if (!groups[key]) groups[key] = { sum: 0, count: 0, recette: r.recette || 'Inconnue', year: my.year, month: my.month };
+    groups[key].sum += parseFloat(String(r.cout_ligne).replace(',','.')) || 0;
+    groups[key].count++;
+  });
+  const series = {};
+  Object.values(groups).forEach(g => {
+    const r = g.recette;
+    if (!series[r]) series[r] = [];
+    series[r].push({ label: g.month + '/' + g.year, x: g.year + '-' + g.month, y: g.sum });
+  });
+  Object.values(series).forEach(s => s.sort((a, b) => a.x.localeCompare(b.x)));
+  drawLineChart(canvas, series, 'Coût total (€)', container);
+}
+
+function drawLineChart(canvas, series, yLabel, container) {
+  const dpr = window.devicePixelRatio || 1;
+  const rect = container.getBoundingClientRect();
+  const w = rect.width || 800;
+  const h = 340;
+  canvas.width = w * dpr;
+  canvas.height = h * dpr;
+  canvas.style.width = w + 'px';
+  canvas.style.height = h + 'px';
+  const ctx = canvas.getContext('2d');
+  ctx.scale(dpr, dpr);
+  const pad = { top: 20, right: 20, bottom: 60, left: 70 };
+  const chartW = w - pad.left - pad.right;
+  const chartH = h - pad.top - pad.bottom;
+  ctx.clearRect(0, 0, w, h);
+  const allPoints = {};
+  Object.entries(series).forEach(([name, pts]) => { pts.forEach(p => { allPoints[p.x] = true; }); });
+  const xLabels = Object.keys(allPoints).sort();
+  let minY = Infinity, maxY = -Infinity;
+  Object.values(series).forEach(pts => { pts.forEach(p => { if (p.y < minY) minY = p.y; if (p.y > maxY) maxY = p.y; }); });
+  if (minY === Infinity) { minY = 0; maxY = 100; }
+  const yRange = maxY - minY || 1;
+  const yPad = yRange * 0.1 || 1;
+  minY = Math.max(0, minY - yPad);
+  maxY = maxY + yPad;
+  const toX = (x) => pad.left + (xLabels.indexOf(x) / Math.max(xLabels.length - 1, 1)) * chartW;
+  const toY = (y) => pad.top + chartH - ((y - minY) / (maxY - minY)) * chartH;
+  ctx.fillStyle = '#f8f9fa';
+  ctx.fillRect(pad.left, pad.top, chartW, chartH);
+  ctx.strokeStyle = '#e9ecef';
+  ctx.lineWidth = 1;
+  const nGrid = 5;
+  for (let i = 0; i <= nGrid; i++) {
+    const y = pad.top + (i / nGrid) * chartH;
+    ctx.beginPath(); ctx.moveTo(pad.left, y); ctx.lineTo(pad.left + chartW, y); ctx.stroke();
+    const val = maxY - (i / nGrid) * (maxY - minY);
+    ctx.fillStyle = '#868e96';
+    ctx.font = '11px system-ui, sans-serif';
+    ctx.textAlign = 'right';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(val.toFixed(2) + '€', pad.left - 8, y);
+  }
+  ctx.fillStyle = '#868e96';
+  ctx.font = '10px system-ui, sans-serif';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'top';
+  xLabels.forEach((x, i) => {
+    if (xLabels.length > 12 && i % Math.ceil(xLabels.length / 12) !== 0) return;
+    ctx.fillText(x, toX(x), pad.top + chartH + 8);
+  });
+  ctx.save();
+  ctx.translate(14, pad.top + chartH / 2);
+  ctx.rotate(-Math.PI / 2);
+  ctx.fillStyle = '#495057';
+  ctx.font = '11px system-ui, sans-serif';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillText(yLabel, 0, 0);
+  ctx.restore();
+  const palette = ['#1f8c88','#67b54b','#e05c5c','#f0a500','#6f42c1','#20c997','#fd7e14','#e83e8c','#0d6efd','#198754','#dc3545','#ffc107','#6610f2','#17a2b8','#6c757d'];
+  const keys = Object.keys(series);
+  const pointsData = [];
+  keys.forEach((name, idx) => {
+    const pts = series[name];
+    const color = palette[idx % palette.length];
+    ctx.strokeStyle = color;
+    ctx.lineWidth = 2.5;
+    ctx.lineJoin = 'round';
+    ctx.beginPath();
+    pts.forEach((p, i) => { const sx = toX(p.x); const sy = toY(p.y); if (i === 0) ctx.moveTo(sx, sy); else ctx.lineTo(sx, sy); });
+    ctx.stroke();
+    ctx.fillStyle = color;
+    pts.forEach(p => { const sx = toX(p.x); const sy = toY(p.y); ctx.beginPath(); ctx.arc(sx, sy, 4, 0, Math.PI * 2); ctx.fill(); pointsData.push({ seriesName: name, seriesColor: color, label: p.label || p.x, value: p.y, sx, sy }); });
+  });
+  let tooltipEl = container.querySelector('.chart-tooltip');
+  if (!tooltipEl) {
+    tooltipEl = document.createElement('div');
+    tooltipEl.className = 'chart-tooltip';
+    tooltipEl.style.cssText = 'position:absolute;pointer-events:none;background:#1a1a2e;color:#fff;padding:8px 12px;border-radius:8px;font-size:12px;line-height:1.5;box-shadow:0 4px 16px rgba(0,0,0,0.2);z-index:100;opacity:0;transition:opacity 0.15s ease;white-space:nowrap;font-family:system-ui,sans-serif';
+    container.appendChild(tooltipEl);
+  }
+  const onMove = function(e) {
+    const cr = canvas.getBoundingClientRect();
+    const mx = e.clientX - cr.left;
+    const my = e.clientY - cr.top;
+    let nearest = null, minDist = 14;
+    pointsData.forEach(pt => { const dx = mx - pt.sx; const dy = my - pt.sy; const dist = Math.sqrt(dx*dx+dy*dy); if (dist < minDist) { minDist = dist; nearest = pt; } });
+    if (nearest) {
+      tooltipEl.style.opacity = '1';
+      tooltipEl.innerHTML = '<div style="font-weight:600;margin-bottom:2px">' + nearest.seriesName + '</div><div style="color:#adb5bd;font-size:11px">' + nearest.label + '</div><div style="margin-top:3px"><span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:' + nearest.seriesColor + ';vertical-align:middle;margin-right:5px"></span><strong>' + nearest.value.toFixed(2) + '€</strong></div>';
+      let tx = nearest.sx + 12, ty = nearest.sy - 10;
+      if (tx + 160 > w) tx = nearest.sx - 160;
+      if (ty < 0) ty = nearest.sy + 20;
+      if (ty + 50 > h) ty = nearest.sy - 40;
+      tooltipEl.style.left = tx + 'px';
+      tooltipEl.style.top = ty + 'px';
+    } else { tooltipEl.style.opacity = '0'; }
+  };
+  const onLeave = function() { tooltipEl.style.opacity = '0'; };
+  canvas.addEventListener('mousemove', onMove);
+  canvas.addEventListener('mouseleave', onLeave);
+  if (canvas._dashListeners) {
+    canvas.removeEventListener('mousemove', canvas._dashListeners.move);
+    canvas.removeEventListener('mouseleave', canvas._dashListeners.leave);
+  }
+  canvas._dashListeners = { move: onMove, leave: onLeave };
+  const legendEl = container.querySelector('.chart-legend');
+  if (legendEl) legendEl.remove();
+  if (keys.length > 0) {
+    const lg = document.createElement('div');
+    lg.className = 'chart-legend';
+    lg.style.cssText = 'display:flex;flex-wrap:wrap;gap:8px 16px;padding:12px 8px 0;justify-content:center';
+    keys.forEach((name, idx) => {
+      const item = document.createElement('span');
+      item.style.cssText = 'display:inline-flex;align-items:center;gap:6px;font-size:12px;color:var(--text2)';
+      item.innerHTML = '<span style="display:inline-block;width:12px;height:4px;border-radius:2px;background:' + palette[idx % palette.length] + '"></span> ' + name;
+      lg.appendChild(item);
+    });
+    container.appendChild(lg);
+  }
+}
+
+function exportDashboardCsv() {
+  const year = document.getElementById('dashYear')?.value || '';
+  const month = document.getElementById('dashMonth')?.value || '';
+  const filterIng = (document.getElementById('dashIngredient')?.value || '').toLowerCase();
+  const filterRec = (document.getElementById('dashRecette')?.value || '').toLowerCase();
+  let csv = '\uFEFF';
+  csv += 'Type;Date;Ingrédient/Recette;Prix unitaire (€);Quantité;Unité\n';
+  let recData = RECEPTIONS.filter(r => r.prix && parseFloat(String(r.prix).replace(',','.')) > 0);
+  if (year) recData = recData.filter(r => r.date && r.date.slice(0,4) === year);
+  if (month) recData = recData.filter(r => r.date && r.date.slice(5,7) === month);
+  if (filterIng) recData = recData.filter(r => (r.produit || '').toLowerCase() === filterIng);
+  recData.forEach(r => { csv += 'Ingrédient;' + (r.date||'') + ';' + (r.produit||'') + ';' + (r.prix||'') + ';' + (r.quantite||'') + ';' + (r.unite||'') + '\n'; });
+  let prodData = PRODUCTIONS.filter(r => r.cout_ligne && parseFloat(String(r.cout_ligne).replace(',','.')) > 0);
+  if (year) prodData = prodData.filter(r => r.date && r.date.slice(0,4) === year);
+  if (month) prodData = prodData.filter(r => r.date && r.date.slice(5,7) === month);
+  if (filterRec) prodData = prodData.filter(r => (r.recette || '').toLowerCase() === filterRec);
+  prodData.forEach(r => { csv += 'Production;' + (r.date||'') + ';' + (r.recette||'') + ';' + (r.cout_ligne||'') + ';' + (r.poids_ingredient||'') + ';g\n'; });
+  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = 'tableau_de_bord_' + new Date().toISOString().slice(0,10) + '.csv';
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+</script>
+
 </body>
 </html>
