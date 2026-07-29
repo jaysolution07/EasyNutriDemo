@@ -2096,7 +2096,42 @@ const DEMO_NUTRI = (() => {
     { id_production:'PROD-DEMO-030', date:'2026-08-23', recette_id:'REC-004', recette:'Wrap poulet crudites', lot_recette:'WRP-260823-A', poids_net:'433', dlc_ddm_type:'DLC', dlc_ddm:'2026-09-01', ingredient_id:'ING-005', ingredient:'Tomate concassee', lot_ingredient:'TOM-260823B', dlc_ddm_ingredient:'2026-08-30', poids_ingredient:'620', prix_unitaire:'2.28', cout_ligne:'1.41', energie_kj:'0', energie_kcal:'0', proteines_g:'0', glucides_g:'0', sucres_g:'0', lipides_g:'0', ags_g:'0', sel_g:'0', fibres_g:'0', allergenes:'', mentions:'', format_export:'pdf' },
     { id_production:'PROD-DEMO-030', date:'2026-08-23', recette_id:'REC-004', recette:'Wrap poulet crudites', lot_recette:'WRP-260823-A', poids_net:'562', dlc_ddm_type:'DLC', dlc_ddm:'2026-09-01', ingredient_id:'ING-012', ingredient:'Oignons eminces', lot_ingredient:'OIG-260823A', dlc_ddm_ingredient:'2026-09-02', poids_ingredient:'554', prix_unitaire:'1.89', cout_ligne:'1.05', energie_kj:'0', energie_kcal:'0', proteines_g:'0', glucides_g:'0', sucres_g:'0', lipides_g:'0', ags_g:'0', sel_g:'0', fibres_g:'0', allergenes:'', mentions:'', format_export:'pdf' }
   ];
-  return { allergenes, fournisseurs, categories, ingredients, recettes, recetteDetails, resources, users, ciqual, planning, receptions, productions };
+  // ── Lots de stock simulés depuis les réceptions ──
+  const stock = (() => {
+    const seen = new Set();
+    const items = [];
+    receptions.forEach((r, i) => {
+      const ing = ingredients.find(x => x.nom === r.produit);
+      if (!ing) return;
+      const key = r.produit + '|' + r.lot;
+      if (seen.has(key)) return;
+      seen.add(key);
+      items.push({ id_stock: `STK-DEMO-${String(i+1).padStart(3,'0')}`, produit: r.produit, lot: r.lot, dlc_ddm: r.dlc_ddm, quantite: r.quantite, unite: r.unite, prix_unitaire: r.prix });
+    });
+    // Lots supplémentaires pour montrer plusieurs lots par ingrédient
+    [
+      { produit:'Quinoa cuit', lot:'QUI-260801A', dlc_ddm:'2027-02-15', quantite:22.5, unite:'kg', prix_unitaire:4.95 },
+      { produit:'Poulet roti eminces', lot:'POU-260802B', dlc_ddm:'2026-09-20', quantite:18.3, unite:'kg', prix_unitaire:12.45 },
+      { produit:'Parmesan rape', lot:'PAR-260803C', dlc_ddm:'2027-01-10', quantite:15.8, unite:'kg', prix_unitaire:19.80 },
+      { produit:'Creme liquide 30%', lot:'CRE-260804A', dlc_ddm:'2026-08-28', quantite:10.2, unite:'L', prix_unitaire:4.55 },
+      { produit:'Oignons eminces', lot:'OIG-260805D', dlc_ddm:'2026-09-05', quantite:25.0, unite:'kg', prix_unitaire:1.98 },
+      { produit:'Beurre doux', lot:'BEU-260806B', dlc_ddm:'2026-09-12', quantite:30.0, unite:'kg', prix_unitaire:8.85 },
+      { produit:'Noisettes concassees', lot:'NOI-260807C', dlc_ddm:'2027-03-20', quantite:20.0, unite:'kg', prix_unitaire:12.90 },
+      { produit:'Tomate concassee', lot:'TOM-260808A', dlc_ddm:'2026-11-15', quantite:30.0, unite:'kg', prix_unitaire:2.30 },
+      { produit:'Farine de ble', lot:'FAR-260809D', dlc_ddm:'2026-12-01', quantite:15.0, unite:'kg', prix_unitaire:1.55 },
+      { produit:'Huile d olive', lot:'HUI-260810B', dlc_ddm:'2027-04-10', quantite:20.0, unite:'L', prix_unitaire:8.45 },
+      { produit:'Oeufs entiers', lot:'OEU-260811A', dlc_ddm:'2026-09-18', quantite:12.0, unite:'kg', prix_unitaire:4.10 }
+    ].forEach((lot, i) => {
+      const ing = ingredients.find(x => x.nom === lot.produit);
+      if (!ing) return;
+      const key = lot.produit + '|' + lot.lot;
+      if (seen.has(key)) return;
+      seen.add(key);
+      items.push({ id_stock: `STK-EXT-${String(i+1).padStart(2,'0')}`, ...lot });
+    });
+    return items;
+  })();
+  return { allergenes, fournisseurs, categories, ingredients, recettes, recetteDetails, resources, users, ciqual, planning, receptions, productions, stock };
 })();
 
 function initDemoSession() {
@@ -2149,6 +2184,7 @@ function handleDemoFetch(url, init = {}) {
   if (action === 'categories') return Promise.resolve(demoJsonResponse(DEMO_NUTRI.categories));
   if (action === 'recettes') return Promise.resolve(demoJsonResponse(DEMO_NUTRI.recettes));
   if (action === 'receptions') return Promise.resolve(demoJsonResponse(DEMO_NUTRI.receptions));
+  if (action === 'lotsDisponibles') return Promise.resolve(demoJsonResponse(DEMO_NUTRI.stock));
   if (action === 'productions') return Promise.resolve(demoJsonResponse(DEMO_NUTRI.productions));
   if (action === 'planning') return Promise.resolve(demoJsonResponse(DEMO_NUTRI.planning));
   if (action === 'recette') {
@@ -3659,20 +3695,46 @@ async function deleteIngredient() {
 //  MODULE PRODUCTION
 // ════════════════════════════════════════════════════════
 let PROD = {
-  lotRecette: '', poidsNet: '', dateType: 'DLC', dateLimite: '',
-  mentions: '', lotsIng: {}, format: 'pdf'
+  lotRecette: '', poidsNet: '', poidsProduit: '', dateType: 'DLC', dateLimite: '',
+  mentions: '', lotsIng: {}, dateIng: {}, stockLots: {}, format: 'pdf',
+  lotAllocations: [], _stockLotsMap: {}, _manualLotModes: {}, _manualSelections: {},
+  contenants: [], nbEtiquettes: '1', formats: ['pdf'], historyMode: false
 };
+
+function parseDecimalInput(value) {
+  if (!value) return 0;
+  const s = String(value).trim().replace(',', '.');
+  const n = parseFloat(s);
+  return isNaN(n) ? 0 : n;
+}
+function formatWeightG(value, decimals = 0) {
+  const parsed = Number(value);
+  if (!Number.isFinite(parsed)) return '0';
+  return parsed.toFixed(decimals).replace(/\.00$/, '').replace(/(\.\d*[1-9])0+$/, '$1');
+}
+function getRecetteBaseWeight() {
+  return RECETTE.ingredients.reduce((acc, row) => acc + (parseFloat(row.poids) || 0), 0);
+}
+function getProductionWeight() {
+  return parseDecimalInput(PROD.poidsProduit) || getRecetteBaseWeight();
+}
+function getProductionScaleRatio() {
+  const baseWeight = getRecetteBaseWeight();
+  const productionWeight = getProductionWeight();
+  return baseWeight > 0 && productionWeight > 0 ? productionWeight / baseWeight : 1;
+}
 
 function openModalProduction() {
   if (!hasModuleAccess('production')) { toast('Module Production non disponible avec votre abonnement', 'error'); return; }
   if (!RECETTE.id) return;
-  PROD = { lotRecette:'', poidsNet:'', dateType:'DLC', dateLimite:'', mentions:'', lotsIng:{}, format:'pdf' };
+  PROD = { lotRecette:'', poidsNet:'', poidsProduit:'', dateType:'DLC', dateLimite:'', mentions:'', lotsIng:{}, dateIng:{}, stockLots:{}, format:'pdf', lotAllocations:[], _stockLotsMap:{}, _manualLotModes:{}, _manualSelections:{}, contenants:[], nbEtiquettes:'1', formats:['pdf'], historyMode:false };
   document.getElementById('prodNbEtiquettes').value = '1';
 
   const nom = document.getElementById('nom').value || 'Recette';
   document.getElementById('prodRecetteName').textContent = nom;
   document.getElementById('prodLotRecette').value = '';
   document.getElementById('prodPoidsNet').value = '';
+  document.getElementById('prodPoidsProduit').value = '';
   document.getElementById('prodMentions').value = '';
   document.getElementById('prodDateLimite').value = '';
   setProdDateType('DLC');
@@ -3681,8 +3743,25 @@ function openModalProduction() {
   cont.innerHTML = '';
   const seen = new Set();
 
+  // Charger les lots disponibles depuis le stock DEMO
+  let stockLotsMap = {};
+  try {
+    const lots = DEMO_NUTRI.stock || [];
+    if (Array.isArray(lots)) {
+      stockLotsMap = lots.reduce((acc, s) => {
+        const key = String(s.produit || '').trim().toLowerCase();
+        if (!acc[key]) acc[key] = [];
+        acc[key].push(s);
+        return acc;
+      }, {});
+    }
+  } catch(e) { /* stock non disponible */ }
+
+  PROD._stockLotsMap = stockLotsMap;
+  PROD.lotAllocations = [];
+
   // Calcul poids total pour QUID
-  const poidsTotal = RECETTE.ingredients.reduce((acc, r) => acc + (parseFloat(r.poids) || 0), 0);
+  const poidsTotal = getRecetteBaseWeight();
 
   RECETTE.ingredients.forEach(row => {
     const ing = ING.find(x => x.id == row.ingredient);
@@ -3713,20 +3792,69 @@ function openModalProduction() {
 
     const div = document.createElement('div');
     div.className = 'prod-lot-row';
-div.innerHTML = `
+
+    // Allocation FIFO automatique
+    const ratio = getProductionScaleRatio();
+    const neededQty = (parseFloat(row.poids) || 0) * ratio;
+    const fqty = formatWeightG(neededQty, 1);
+    const { allocations, manque } = autoAllocateLotsFIFO(ing, neededQty, stockLotsMap);
+
+    // Stocker les allocations dans PROD.lotAllocations
+    allocations.forEach(a => {
+      PROD.lotAllocations.push({
+        ingId: a.ingId, ingNom: a.ingNom, stockId: a.stockId,
+        lot: a.lot, dlc: a.dlc, qty: a.qty,
+        stockQty: a.stockQty, stockUnite: a.stockUnite,
+        prix_unitaire: a.prix_unitaire || ''
+      });
+    });
+
+    let lotsLines = '';
+    if (allocations.length) {
+      lotsLines = allocations.map((a, idx) => `
+        <div style="display:flex;align-items:center;gap:6px;margin-top:${idx>0?'4px':'0'}">
+          <span style="font-size:11px;white-space:nowrap">${escHtml(a.lot)}</span>
+          <span style="font-size:10px;color:var(--text3)">DLC: ${a.dlc || '—'}</span>
+          <input class="form-input stock-lot-qty" type="number" step="any"
+            data-ing-id="${ing.id}" data-stock-id="${escHtml(a.stockId)}"
+            data-lot="${escHtml(a.lot)}" data-dlc="${escHtml(a.dlc || '')}"
+            data-stock-unite="${escHtml(a.stockUnite || 'g')}"
+            data-prix-unitaire="${escHtml(String(a.prix_unitaire || ''))}"
+            value="${formatWeightG(a.qty,1)}" max="${a.maxQty}"
+            style="width:90px;font-size:12px;padding:4px 6px;text-align:right"
+            onchange="onLotQtyChange(this, '${ing.id}', ${fqty})">
+          <span style="font-size:10px;color:var(--text3);white-space:nowrap">/ ${a.maxQty} ${a.unite}</span>
+        </div>
+      `).join('');
+      const totalAlloue = allocations.reduce((s, a) => s + a.qty, 0);
+      const statut = totalAlloue >= neededQty
+        ? `<span style="color:var(--g2);font-weight:700">✅ ${formatWeightG(totalAlloue,1)} / ${fqty} g</span>`
+        : `<span style="color:var(--danger);font-weight:700">⚠️ ${formatWeightG(totalAlloue,1)} / ${fqty} g (manque ${formatWeightG(manque,1)} g)</span>`;
+      lotsLines += `<div style="font-size:11px;margin-top:6px;padding-top:4px;border-top:1px solid var(--border)">
+        Total alloué : <span data-statut>${statut}</span>
+      </div>`;
+    } else {
+      // Même sans lot, ajouter l'ingrédient à PROD.lotAllocations
+      PROD.lotAllocations.push({
+        ingId: ing.id, ingNom: ing.nom, stockId: '', lot: '', dlc: '',
+        qty: neededQty, stockQty: gramsToStockQty(neededQty, ing.unite || 'g'),
+        stockUnite: ing.unite || 'g'
+      });
+      lotsLines = `<div style="font-size:11px;color:var(--text3);padding:4px 0">Aucun lot disponible en stock pour ${escHtml(ing.nom)}</div>`;
+    }
+
+    div.innerHTML = `
       <span class="prod-lot-icon">${ing.type === 'compose' ? '🍲' : '🥬'}</span>
       <div style="flex:1;min-width:0;overflow:hidden">
         <div style="display:flex;align-items:center;flex-wrap:wrap">
           <div class="prod-lot-name" title="${escHtml(ing.nom)}">${escHtml(ing.nom)}</div>
           ${quidHtml}
+          <button class="btn btn-sm btn-secondary lot-mode-btn" onclick="toggleIngLotMode('${ing.id}')" style="font-size:10px;padding:2px 6px">🤖 Auto</button>
+          <span style="font-size:10px;color:var(--text3)">(${fqty} g)</span>
         </div>
         ${subsHtml}
-      </div>
-      <div style="display:flex;flex-direction:column;gap:4px;flex-shrink:0">
-        <input class="form-input prod-lot-input" placeholder="N° de lot" data-ing-id="${ing.id}" data-field="lot">
-        <div style="display:flex;gap:4px;align-items:center">
-          <span style="font-size:10px;font-weight:600;color:var(--text3);white-space:nowrap;min-width:32px">${ing.dlc_type || 'DDM'} :</span>
-          <input class="form-input" placeholder="jj/mm/aaaa" data-ing-id="${ing.id}" data-field="date" style="font-size:11px;padding:5px 8px;flex:1">
+        <div class="stock-lot-allocations" data-ing-id="${ing.id}">
+          ${lotsLines}
         </div>
       </div>
     `;
@@ -3762,16 +3890,29 @@ function prodGoStep(n) {
     if (!lot) { toast('Entrez un n° de lot pour la recette', 'error'); return; }
     const date = document.getElementById('prodDateLimite').value;
     if (!date) { toast('Choisissez une date limite', 'error'); return; }
+    const poidsProduit = parseDecimalInput(document.getElementById('prodPoidsProduit').value);
+    if (!poidsProduit) { toast('Indiquez le poids total produit', 'error'); return; }
     PROD.lotRecette = lot;
     PROD.poidsNet   = document.getElementById('prodPoidsNet').value.trim();
+    PROD.poidsProduit = String(poidsProduit);
     PROD.dateLimite = date;
     PROD.mentions   = document.getElementById('prodMentions').value.trim();
+    PROD.contenants = [];
+    PROD.nbEtiquettes = document.getElementById('prodNbEtiquettes').value.trim() || '1';
+
+    // Collecter les lots (stock)
+    PROD.lotsIng = {};
+    PROD.dateIng = {};
+    PROD.stockLots = {};
+
     document.querySelectorAll('#prodLotsIngredients [data-ing-id][data-field="lot"]').forEach(inp => {
       PROD.lotsIng[inp.dataset.ingId] = inp.value.trim();
     });
-    PROD.dateIng = {};
     document.querySelectorAll('#prodLotsIngredients [data-ing-id][data-field="date"]').forEach(inp => {
       PROD.dateIng[inp.dataset.ingId] = inp.value.trim();
+    });
+    document.querySelectorAll('#prodLotsIngredients [data-ing-id][data-field="stock-id"]').forEach(inp => {
+      PROD.stockLots[inp.dataset.ingId] = inp.value.trim();
     });
   }
   if (n === 3) {
@@ -3784,6 +3925,233 @@ function prodGoStep(n) {
     ind.classList.toggle('done',   i < n);
   });
   if (n === 2) renderLabelPreview();
+}
+
+function onLotQtyChange(inputEl, ingId, _staleNeededQty) {
+  const ingRow = RECETTE.ingredients.find(r => String(r.ingredient) === String(ingId));
+  const neededQty = ingRow ? (parseFloat(ingRow.poids) || 0) * getProductionScaleRatio() : (_staleNeededQty || 0);
+  const qties = document.querySelectorAll(`.stock-lot-qty[data-ing-id="${ingId}"]`);
+  let totalAlloue = 0;
+  const newAllocations = [];
+  qties.forEach(inp => {
+    const qty = parseFloat(inp.value) || 0;
+    if (qty <= 0) return;
+    const stockId = inp.dataset.stockId;
+    const lot = inp.dataset.lot;
+    const dlc = inp.dataset.dlc;
+    const stockUnite = inp.dataset.stockUnite || 'g';
+    const ing = ING.find(x => x.id == ingId);
+    newAllocations.push({
+      ingId: ingId, ingNom: ing ? ing.nom : '', stockId, lot, dlc, qty,
+      stockQty: gramsToStockQty(qty, stockUnite),
+      stockUnite, prix_unitaire: parseFloat(String(inp.dataset.prixUnitaire || '0').replace(',', '.')) || ''
+    });
+    totalAlloue += qty;
+  });
+  PROD.lotAllocations = (PROD.lotAllocations || []).filter(a => a.ingId !== ingId).concat(newAllocations);
+  const allocDiv = inputEl.closest('.stock-lot-allocations');
+  if (allocDiv) {
+    const statutEl = allocDiv.querySelector('[data-statut]');
+    if (statutEl) {
+      statutEl.innerHTML = totalAlloue >= neededQty
+        ? `<span style="color:var(--g2);font-weight:700">✅ ${formatWeightG(totalAlloue,1)} / ${formatWeightG(neededQty,1)} g</span>`
+        : `<span style="color:var(--danger);font-weight:700">⚠️ ${formatWeightG(totalAlloue,1)} / ${formatWeightG(neededQty,1)} g (manque ${formatWeightG(neededQty - totalAlloue,1)} g)</span>`;
+    }
+  }
+}
+
+function onProdPoidsChange() {
+  const newWeight = parseDecimalInput(document.getElementById('prodPoidsProduit').value);
+  if (!newWeight || newWeight <= 0) return;
+  PROD.poidsProduit = String(newWeight);
+  const newRatio = getProductionScaleRatio();
+  const seen = new Set();
+  document.querySelectorAll('#prodLotsIngredients .prod-lot-row').forEach(row => {
+    const allocDiv = row.querySelector('.stock-lot-allocations');
+    if (!allocDiv) return;
+    const ingId = allocDiv.dataset.ingId;
+    if (seen.has(ingId)) return;
+    seen.add(ingId);
+    const ing = ING.find(x => x.id == ingId);
+    if (!ing) return;
+    const ir = RECETTE.ingredients.find(r => String(r.ingredient) === String(ingId));
+    const newNeeded = ir ? (parseFloat(ir.poids) || 0) * newRatio : 0;
+    const qtyDisplay = row.querySelector('[style*="font-size:10px;color:var(--text3)"]');
+    if (qtyDisplay && qtyDisplay.textContent.includes('g')) {
+      qtyDisplay.textContent = '(' + formatWeightG(newNeeded,1) + ' g)';
+    }
+    if ((PROD._manualLotModes || {})[ingId]) {
+      const statutEl = allocDiv.querySelector('[data-statut]');
+      if (statutEl) {
+        let total = 0;
+        allocDiv.querySelectorAll('.stock-lot-qty').forEach(inp => { total += parseFloat(inp.value) || 0; });
+        statutEl.textContent = total >= newNeeded
+          ? '✅ ' + formatWeightG(total,1) + ' / ' + formatWeightG(newNeeded,1) + ' g'
+          : '⚠️ ' + formatWeightG(total,1) + ' / ' + formatWeightG(newNeeded,1) + ' g (manque ' + formatWeightG(newNeeded - total,1) + ' g)';
+      }
+      rebuildManualAllocations(ingId);
+    } else {
+      renderIngLotBlock(ingId);
+    }
+  });
+}
+
+function toggleIngLotMode(ingId) {
+  if (!PROD._manualLotModes) PROD._manualLotModes = {};
+  const isManual = PROD._manualLotModes[ingId];
+  if (isManual) {
+    delete PROD._manualLotModes[ingId];
+    const ing = ING.find(x => x.id == ingId);
+    if (ing && PROD._stockLotsMap) {
+      const ingRow = RECETTE.ingredients.find(r => String(r.ingredient) === String(ingId));
+      const nq = ingRow ? (parseFloat(ingRow.poids) || 0) * getProductionScaleRatio() : 0;
+      const { allocations } = autoAllocateLotsFIFO(ing, nq, PROD._stockLotsMap);
+      PROD.lotAllocations = (PROD.lotAllocations || []).filter(a => a.ingId !== ingId)
+        .concat(allocations.map(a => ({
+          ingId: a.ingId, ingNom: a.ingNom, stockId: a.stockId,
+          lot: a.lot, dlc: a.dlc, qty: a.qty,
+          stockQty: a.stockQty, stockUnite: a.stockUnite,
+          prix_unitaire: a.prix_unitaire || ''
+        })));
+    }
+  } else {
+    PROD._manualLotModes[ingId] = true;
+    PROD.lotAllocations = (PROD.lotAllocations || []).filter(a => a.ingId !== ingId);
+  }
+  renderIngLotBlock(ingId);
+}
+
+function renderIngLotBlock(ingId) {
+  const allocDiv = document.querySelector('.stock-lot-allocations[data-ing-id="' + ingId + '"]');
+  if (!allocDiv) return;
+  const row = allocDiv.closest('.prod-lot-row');
+  if (!row) return;
+  const ing = ING.find(x => x.id == ingId);
+  if (!ing) return;
+  const map = (PROD._stockLotsMap || {});
+  const key = String(ing.nom || '').trim().toLowerCase();
+  const lots = (map[key] || []).filter(s => s.quantite > 0);
+  const isManual = !!(PROD._manualLotModes || {})[ingId];
+  const ir = RECETTE.ingredients.find(r => String(r.ingredient) === String(ingId));
+  const needed = ir ? (parseFloat(ir.poids) || 0) * getProductionScaleRatio() : 0;
+  if (isManual && lots.length) {
+    const ms = (PROD._manualSelections || {})[ingId] || [];
+    let total = 0, h = '';
+    lots.forEach(s => {
+      const ex = ms.find(m => String(m.stockId) === String(s.id_stock));
+      const sq = ex ? ex.qty : 0;
+      total += sq;
+      const sid = escHtml(s.id_stock);
+      h += '<div style="display:flex;align-items:center;gap:6px;padding:4px 0">' +
+        '<input type="checkbox" ' + (sq > 0 ? 'checked' : '') +
+          ' onchange="toggleManualLot(&quot;' + ingId + '&quot;,&quot;' + sid + '&quot;,this.checked)" style="flex-shrink:0">' +
+        '<span style="font-size:11px;white-space:nowrap;flex:1;overflow:hidden;text-overflow:ellipsis">' + escHtml(s.lot) + '</span>' +
+        '<span style="font-size:10px;color:var(--text3);flex-shrink:0">DLC: ' + (s.dlc_ddm || '-') + '</span>' +
+        '<input class="form-input stock-lot-qty" type="number" step="any"' +
+          ' data-ing-id="' + ingId + '" data-stock-id="' + sid + '"' +
+          ' data-lot="' + escHtml(s.lot) + '" data-dlc="' + escHtml(s.dlc_ddm || '') + '"' +
+          ' data-stock-unite="' + escHtml(s.unite || 'g') + '"' +
+          ' data-prix-unitaire="' + escHtml(String(s.prix_unitaire || '')) + '"' +
+          ' value="' + formatWeightG(sq,1) + '" max="' + s.quantite + '"' +
+          ' style="width:80px;font-size:12px;padding:4px 6px;text-align:right"' +
+          ' onchange="onManualLotQtyChange(this,&quot;' + ingId + '&quot;)">' +
+        '<span style="font-size:10px;color:var(--text3);white-space:nowrap">/ ' + s.quantite + ' ' + s.unite + '</span>' +
+        '</div>';
+    });
+    const label = total >= needed ? '✅ ' + formatWeightG(total,1) + ' / ' + formatWeightG(needed,1) + ' g' : '⚠️ ' + formatWeightG(total,1) + ' / ' + formatWeightG(needed,1) + ' g';
+    h += '<div style="font-size:11px;margin-top:6px;padding-top:4px;border-top:1px solid var(--border)">Total : <span data-statut>' + label + '</span></div>';
+    allocDiv.innerHTML = h;
+  } else {
+    const { allocations, manque } = autoAllocateLotsFIFO(ing, needed, map);
+    let h = '', total = 0;
+    allocations.forEach((a, i) => {
+      total += a.qty;
+      h += '<div style="display:flex;align-items:center;gap:6px;margin-top:' + (i>0?'4px':'0') + '">' +
+        '<span style="font-size:11px;white-space:nowrap">' + escHtml(a.lot) + '</span>' +
+        '<span style="font-size:10px;color:var(--text3)">DLC: ' + (a.dlc || '-') + '</span>' +
+        '<input class="form-input stock-lot-qty" type="number" step="any"' +
+        ' data-ing-id="' + ingId + '" data-stock-id="' + escHtml(a.stockId) + '"' +
+        ' data-lot="' + escHtml(a.lot) + '" data-dlc="' + escHtml(a.dlc || '') + '"' +
+        ' data-stock-unite="' + escHtml(a.stockUnite || 'g') + '"' +
+        ' value="' + formatWeightG(a.qty,1) + '" max="' + a.maxQty + '"' +
+        ' style="width:90px;font-size:12px;padding:4px 6px;text-align:right"' +
+        ' onchange="onLotQtyChange(this,&quot;' + ingId + '&quot;,' + formatWeightG(needed,1) + ')">' +
+        '<span style="font-size:10px;color:var(--text3);white-space:nowrap">/ ' + a.maxQty + ' ' + a.unite + '</span>' +
+        '</div>';
+    });
+    if (allocations.length) {
+      const label = total >= needed ? '✅ ' + formatWeightG(total,1) + ' / ' + formatWeightG(needed,1) + ' g' : '⚠️ ' + formatWeightG(total,1) + ' / ' + formatWeightG(needed,1) + ' g (manque ' + formatWeightG(manque,1) + ' g)';
+      h += '<div style="font-size:11px;margin-top:6px;padding-top:4px;border-top:1px solid var(--border)">Total : <span data-statut>' + label + '</span></div>';
+      PROD.lotAllocations = (PROD.lotAllocations || []).filter(a => a.ingId !== ingId)
+        .concat(allocations.map(a => ({
+          ingId: a.ingId, ingNom: a.ingNom, stockId: a.stockId,
+          lot: a.lot, dlc: a.dlc, qty: a.qty,
+          stockQty: a.stockQty, stockUnite: a.stockUnite,
+          prix_unitaire: a.prix_unitaire || ''
+        })));
+    } else {
+      h = '<div style="font-size:11px;color:var(--text3);padding:4px 0">Aucun lot disponible</div>';
+    }
+    allocDiv.innerHTML = h;
+  }
+  const btn = row.querySelector('.lot-mode-btn');
+  if (btn) {
+    btn.textContent = isManual ? '✋ Manu' : '🤖 Auto';
+    btn.className = 'btn btn-sm ' + (isManual ? 'btn-danger' : 'btn-secondary') + ' lot-mode-btn';
+  }
+}
+
+function toggleManualLot(ingId, stockId, checked) {
+  if (!PROD._manualSelections) PROD._manualSelections = {};
+  if (!PROD._manualSelections[ingId]) PROD._manualSelections[ingId] = [];
+  if (checked) {
+    const ing = ING.find(x => x.id == ingId);
+    if (ing) {
+      const map = PROD._stockLotsMap || {};
+      const key = String(ing.nom || '').trim().toLowerCase();
+      const s = (map[key] || []).find(x => String(x.id_stock) === String(stockId));
+      if (s && !PROD._manualSelections[ingId].find(m => String(m.stockId) === String(stockId))) {
+        const ir = RECETTE.ingredients.find(r => String(r.ingredient) === String(ingId));
+        const need = ir ? (parseFloat(ir.poids) || 0) * getProductionScaleRatio() : 0;
+        const qty = Math.min(stockQtyToGrams(s.quantite, s.unite), need || 100);
+        PROD._manualSelections[ingId].push({
+          ingId, stockId, lot: s.lot, dlc: s.dlc_ddm || '', qty,
+          stockQty: gramsToStockQty(qty, s.unite),
+          stockUnite: s.unite || 'g'
+        });
+      }
+    }
+  } else {
+    PROD._manualSelections[ingId] = PROD._manualSelections[ingId].filter(m => String(m.stockId) !== String(stockId));
+  }
+  rebuildManualAllocations(ingId);
+  renderIngLotBlock(ingId);
+}
+
+function onManualLotQtyChange(inputEl, ingId) {
+  rebuildManualAllocations(ingId);
+  renderIngLotBlock(ingId);
+}
+
+function rebuildManualAllocations(ingId) {
+  if (!PROD._manualSelections || !PROD._manualSelections[ingId]) return;
+  const inputs = document.querySelectorAll('.stock-lot-qty[data-ing-id="' + ingId + '"]');
+  const selections = [];
+  inputs.forEach(inp => {
+    const qty = parseFloat(inp.value) || 0;
+    if (qty <= 0) return;
+    selections.push({
+      ingId, ingNom: (ING.find(x => x.id == ingId) || {}).nom || '',
+      stockId: inp.dataset.stockId || '', lot: inp.dataset.lot || '',
+      dlc: inp.dataset.dlc || '', qty,
+      stockQty: gramsToStockQty(qty, inp.dataset.stockUnite || 'g'),
+      stockUnite: inp.dataset.stockUnite || 'g',
+      prix_unitaire: parseFloat(String(inp.dataset.prixUnitaire || '0').replace(',', '.')) || 0
+    });
+  });
+  PROD._manualSelections[ingId] = selections;
+  const currentAuto = (PROD.lotAllocations || []).filter(a => a.ingId !== ingId);
+  PROD.lotAllocations = currentAuto.concat(selections);
 }
 
 // ── Rendu Canvas étiquette ──
@@ -4356,20 +4724,64 @@ function buildRecap() {
       }
     }
 
-    const lot = PROD.lotsIng[ing.id] || '—';
-    const dateIng = (PROD.dateIng || {})[ing.id] || '';
-    const dlcLabel = ing.dlc_type || 'DDM';
-    lotsHtml += `
+    const ingAllocs = (PROD.lotAllocations || []).filter(a => String(a.ingId) === String(ing.id));
+    if (ingAllocs.length > 0) {
+      const dlcLabel = ing.dlc_type || 'DDM';
+      let lotsDetail = '';
+      let totalQty = 0;
+      ingAllocs.forEach((a, ai) => {
+        totalQty += a.qty || 0;
+        const qtyShow = a.unite === 'g' ? formatWeightG(a.qty, 1) + ' g' : (a.stockQty ? formatWeightG(a.stockQty, 2) + ' ' + a.stockUnite : formatWeightG(a.qty, 1) + ' g');
+        const prixAff = a.prix_unitaire ? (parseFloat(a.prix_unitaire) || 0).toFixed(2) + ' €' : '';
+        lotsDetail += `
+          <div style="display:flex;align-items:center;gap:8px;padding:4px 0;border-top:${ai>0?'1px dashed var(--border)':'none'}">
+            <span style="font-size:12px;font-weight:600;color:var(--g3)">${escHtml(a.lot || '—')}</span>
+            <span style="font-size:11px;color:var(--text3)">${dlcLabel} : <strong style="color:${dlcLabel==='DLC'?'#e05c5c':'#f0a500'}">${escHtml(a.dlc || '—')}</strong></span>
+            <span style="font-size:11px;color:var(--text2);margin-left:auto">${qtyShow}</span>
+            ${prixAff ? `<span style="font-size:11px;color:#4a6358;font-weight:600">${prixAff}</span>` : ''}
+          </div>`;
+      });
+      const totalShow = formatWeightG(totalQty, 1) + ' g';
+      lotsHtml += `
       <div style="padding:6px 0;border-bottom:1px solid var(--border)">
         <div style="display:flex;gap:8px;align-items:flex-start">
           <div style="flex:1">
             <span style="font-weight:600">${escHtml(ing.nom)}</span>${quidHtml}
             ${subsHtml}
           </div>
-          <span style="color:var(--g3);font-weight:600;white-space:nowrap">Lot : ${escHtml(lot)}</span>
+          <span style="font-size:11px;color:var(--g2);font-weight:600;white-space:nowrap">Total : ${totalShow}</span>
         </div>
-        ${dateIng ? `<div style="font-size:11px;color:var(--text3);margin-top:2px">${dlcLabel} : <strong style="color:${dlcLabel==='DLC'?'#e05c5c':'#f0a500'}">${escHtml(dateIng)}</strong></div>` : ''}
+        <div style="margin-top:4px;padding-left:16px">${lotsDetail}</div>
       </div>`;
+    } else {
+      const oldLot = PROD.lotsIng[ing.id];
+      const oldDate = (PROD.dateIng || {})[ing.id] || '';
+      const oldDlcLabel = ing.dlc_type || 'DDM';
+      if (oldLot) {
+        lotsHtml += `
+      <div style="padding:6px 0;border-bottom:1px solid var(--border)">
+        <div style="display:flex;gap:8px;align-items:flex-start">
+          <div style="flex:1">
+            <span style="font-weight:600">${escHtml(ing.nom)}</span>${quidHtml}
+            ${subsHtml}
+          </div>
+          <span style="color:var(--g3);font-weight:600;white-space:nowrap">Lot : ${escHtml(oldLot)}</span>
+        </div>
+        ${oldDate ? `<div style="font-size:11px;color:var(--text3);margin-top:2px">${oldDlcLabel} : <strong style="color:${oldDlcLabel==='DLC'?'#e05c5c':'#f0a500'}">${escHtml(oldDate)}</strong></div>` : ''}
+      </div>`;
+      } else {
+        lotsHtml += `
+      <div style="padding:6px 0;border-bottom:1px solid var(--border)">
+        <div style="display:flex;gap:8px;align-items:flex-start">
+          <div style="flex:1">
+            <span style="font-weight:600">${escHtml(ing.nom)}</span>${quidHtml}
+            ${subsHtml}
+          </div>
+          <span style="color:var(--text3);font-size:12px">Aucun lot renseigné</span>
+        </div>
+      </div>`;
+      }
+    }
   });
 
   document.getElementById('prodRecap').innerHTML = `
@@ -4421,8 +4833,16 @@ async function prodExportPdf() {
     nutri.ags        += (parseFloat(ing.Ags)||0)*p/100;
     nutri.sel        += (parseFloat(ing.sel_g)||0)*p/100;
     nutri.fibres     += (parseFloat(ing.fibres_g)||0)*p/100;
-    const prixKg = parseFloat(ing.prix_kg)||0;
-    if(prixKg>0){ const eq=ing.unite==='L'?(parseFloat(ing.equiv_poids_g)||1000):1000; prixTotal+=(p/eq)*prixKg; }
+    const allocs = (PROD.lotAllocations || []).filter(a => String(a.ingId) === String(ing.id));
+    if (allocs.length > 0) {
+      allocs.forEach(a => {
+        const pu = parseFloat(String(a.prix_unitaire || '0').replace(',', '.')) || 0;
+        prixTotal += pu * (a.stockQty || gramsToStockQty(a.qty || 0, a.stockUnite || 'kg'));
+      });
+    } else {
+      const prixKg = parseFloat(ing.prix_kg)||0;
+      if(prixKg>0){ const eq=ing.unite==='L'?(parseFloat(ing.equiv_poids_g)||1000):1000; prixTotal+=(p/eq)*prixKg; }
+    }
   });
   const n100 = v => poidsTotal>0 ? (v/poidsTotal*100).toFixed(2) : '0.00';
 
@@ -4462,18 +4882,38 @@ async function prodExportPdf() {
     const ing = ING.find(x=>x.id==row.ingredient); if(!ing) return '';
     const p = parseFloat(row.poids)||0;
     const allergs = ing.allergenes ? String(ing.allergenes).split(',').map(a=>a.trim().toUpperCase()).filter(Boolean) : [];
-    const lot = PROD.lotsIng[ing.id] || '—';
-    const dateIng = (PROD.dateIng || {})[ing.id] || '';
+    const ingAllocs = (PROD.lotAllocations || []).filter(a => String(a.ingId) === String(ing.id));
     const dlcLabel = ing.dlc_type || 'DDM';
-    const lotCell = escHtml(lot) + (dateIng ? `<br><span style="font-size:10px;font-weight:400;color:${dlcLabel==='DLC'?'#e05c5c':'#9a6500'}">${dlcLabel} : ${escHtml(dateIng)}</span>` : '');
+    let lotCell = '';
+    let prixLigneTotal = 0;
+    if (ingAllocs.length > 0) {
+      const parts = ingAllocs.map((a, ai) => {
+        const lotNum = escHtml(a.lot || '—');
+        const dlcStr = escHtml(a.dlc || '—');
+        const qtyShow = a.unite === 'g' ? formatWeightG(a.qty, 1) + ' g' : (a.stockQty ? formatWeightG(a.stockQty, 2) + ' ' + a.stockUnite : formatWeightG(a.qty, 1) + ' g');
+        const pu = parseFloat(String(a.prix_unitaire || '0').replace(',', '.')) || 0;
+        const montant = pu * (a.stockQty || gramsToStockQty(a.qty || 0, a.stockUnite || 'kg'));
+        prixLigneTotal += montant;
+        return `<span style="font-size:11px">${ai>0?'<br>':''}• ${lotNum} — ${dlcLabel} ${dlcStr} — ${qtyShow}${pu>0?' — <strong>'+montant.toFixed(2)+' €</strong>':''}</span>`;
+      }).join('');
+      lotCell = `<div style="text-align:left;font-weight:400">${parts}</div>`;
+    } else {
+      lotCell = escHtml(PROD.lotsIng[ing.id] || '—');
+      if ((PROD.dateIng || {})[ing.id]) {
+        lotCell += `<br><span style="font-size:10px;font-weight:400;color:${dlcLabel==='DLC'?'#e05c5c':'#9a6500'}">${dlcLabel} : ${escHtml((PROD.dateIng||{})[ing.id])}</span>`;
+      }
+      // Fallback : prix standard
+      const pk = parseFloat(ing.prix_kg)||0;
+      if(pk>0){ const eq=ing.unite==='L'?(parseFloat(ing.equiv_poids_g)||1000):1000; prixLigneTotal = (p/eq)*pk; }
+    }
     const quidStr = row.quid && poidsTotal2 > 0 ? ` <span style="color:#e07c20;font-weight:700">(${(p/poidsTotal2*100).toFixed(1)}%)</span>` : '';
-    const prixLigne = (() => { const pk=parseFloat(ing.prix_kg)||0; if(!pk) return '—'; const eq=ing.unite==='L'?(parseFloat(ing.equiv_poids_g)||1000):1000; return (p/eq*pk).toFixed(2)+' €'; })();
+    const prixLigneShow = prixLigneTotal > 0 ? prixLigneTotal.toFixed(2) + ' €' : '—';
     return `<tr>
       <td style="padding:7px 10px;border:1px solid #d6e8de;font-size:12px;font-weight:600">${escHtml(ing.nom)}${quidStr}${allergs.length?` <span style="color:#f0a500;font-size:10px">[${allergs.join(', ')}]</span>`:''}</td>
       <td style="padding:7px 10px;border:1px solid #d6e8de;font-size:12px;text-align:right">${p} g</td>
       <td style="padding:7px 10px;border:1px solid #d6e8de;font-size:12px;text-align:right">${(p/poidsTotal*100).toFixed(1)}%</td>
-      <td style="padding:7px 10px;border:1px solid #d6e8de;font-size:12px;text-align:center;font-weight:600;color:#1f8c88">${lotCell}</td>
-      <td style="padding:7px 10px;border:1px solid #d6e8de;font-size:12px;text-align:right;color:#4a6358">${prixLigne}</td>
+      <td style="padding:7px 10px;border:1px solid #d6e8de;font-size:12px;text-align:left;font-weight:600;color:#1f8c88">${lotCell}</td>
+      <td style="padding:7px 10px;border:1px solid #d6e8de;font-size:12px;text-align:right;color:#4a6358">${prixLigneShow}</td>
     </tr>`;
   }).join('');
 
@@ -6777,6 +7217,10 @@ function savePlanningTaskOld() {
         <div class="form-group">
           <label class="form-label">Poids net du contenant (g)</label>
           <input class="form-input" id="prodPoidsNet" type="text" inputmode="decimal" placeholder="Ex: 250">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Poids total produit (g) *</label>
+          <input class="form-input" id="prodPoidsProduit" type="text" inputmode="decimal" placeholder="Ex: 5000" oninput="onProdPoidsChange()">
         </div>
         <div class="form-group">
           <label class="form-label">Nombre d'étiquettes</label>
