@@ -4,15 +4,15 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <link rel="manifest" href="./manifest.json">
-<link rel="apple-touch-icon" href="https://raw.githubusercontent.com/JaySolution/EasyNutri/main/enlog.png">
+<link rel="apple-touch-icon" href="data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%20100%20100%22%3E%3Cdefs%3E%3ClinearGradient%20id%3D%22g%22%20x1%3D%220%22%20y1%3D%220%22%20x2%3D%22100%22%20y2%3D%22100%22%3E%3Cstop%20offset%3D%220%22%20stop-color%3D%22%2367b54b%22%2F%3E%3Cstop%20offset%3D%22100%22%20stop-color%3D%22%231f8c88%22%2F%3E%3C%2FlinearGradient%3E%3C%2Fdefs%3E%3Crect%20width%3D%22100%22%20height%3D%22100%22%20rx%3D%2222%22%20fill%3D%22url(%23g)%22%2F%3E%3Ctext%20x%3D%2250%22%20y%3D%2280%22%20text-anchor%3D%22middle%22%20font-size%3D%2270%22%3E%F0%9F%8D%83%3C%2Ftext%3E%3C%2Fsvg%3E">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="white">
 <meta name="apple-mobile-web-app-title" content="EasyNutri">
 <meta name="theme-color" content="#1f8c88">
 <meta name="mobile-web-app-capable" content="yes">
 <title>EasyNutri</title>
-<link href="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.15/index.global.min.css" rel="stylesheet">
-<script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.15/index.global.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.15/index.global.min.js" defer></script>
+<link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Sora:wght@300;400;500;600;700&family=DM+Serif+Display:ital@0;1&display=swap" rel="stylesheet">
 <style>
   :root {
@@ -378,6 +378,9 @@
   /* ── MOBILE ≤ 768px ── */
   @media (max-width: 768px) {
 
+    /* ── Empêcher tout overflow horizontal ── */
+    .main { overflow-x: hidden; }
+
     /* Header mobile : burger | logo centré | status */
     .header { padding: 0 14px; height: 56px; gap: 0; }
     /* Logo centré : margin auto de chaque côté du groupe logo */
@@ -424,7 +427,7 @@
     .card { border-radius: 14px; }
     .card-header { padding: 13px 16px 11px; flex-direction: column; align-items: stretch; gap: 10px; }
     .card-header > .card-title { margin-bottom: 0; }
-    .card-header .flex { width: 100%; gap: 8px; }
+    .card-header .flex { width: 100%; gap: 8px; flex-wrap: wrap; }
     .card-header .flex .form-select { flex: 1; }
     .card-header .flex .search-wrap { flex: 1; }
     .card-header .flex .search-wrap input { width: 100%; }
@@ -462,7 +465,7 @@
     }
 
     /* Ingredient editor rows */
-    .ing-row { grid-template-columns: 1fr 76px auto; gap: 7px; }
+    .ing-row { grid-template-columns: 1fr 76px auto 28px; gap: 7px; }
 
     /* Nutri cards */
     .nutri-cards { grid-template-columns: repeat(3, 1fr); gap: 7px; margin-top: 10px; }
@@ -562,7 +565,7 @@
     .nutri-card .val { font-size: 15px; }
     .modal { padding: 18px 14px 28px; }
     #allergenesCheckboxes { grid-template-columns: 1fr 1fr; }
-    .ing-row { grid-template-columns: 1fr 68px auto; }
+    .ing-row { grid-template-columns: 1fr 68px auto 28px; }
     #fab { width: 52px; height: 52px; font-size: 25px; }
     #decisionGrid {
       grid-template-columns: 1fr !important;
@@ -1203,8 +1206,8 @@
           <div class="card-header">
             <div class="card-title">Liste</div>
             <div class="flex gap-2 items-center">
-              <select class="form-select" id="filterCatSelect" onchange="filterByCategorie(this.value)" style="font-size:12px;padding:6px 10px;width:130px"><option value="">Toutes catégories</option></select>
-              <div class="search-wrap" style="width:140px">
+              <select class="form-select" id="filterCatSelect" onchange="filterByCategorie(this.value)" style="font-size:12px;padding:6px 10px"><option value="">Toutes catégories</option></select>
+              <div class="search-wrap">
                 <input class="form-input" id="searchRecette" placeholder="Rechercher..." style="padding:7px 10px 7px 34px;font-size:12px;" oninput="filterRecettes()">
               </div>
             </div>
@@ -2259,55 +2262,72 @@ function btnLoading(btn, loading) {
   else { btn.classList.remove('loading'); btn.innerHTML = btn.dataset.label || btn.innerHTML; btn.disabled = false; }
 }
 
-// ── INIT ──
+// ── INIT (chargement direct depuis DEMO_NUTRI) ──
 async function init() {
-  if (!API) return; // pas de session → rester sur la page login
+  if (!API) return;
   document.getElementById('splash').classList.remove('hidden');
-  splashProgress(10, 'Connexion en cours…');
+  splashProgress(5, 'Chargement…');
   showSkeletonRecettes(); showSkeletonIngredients();
   try {
-    splashProgress(25, 'Chargement des ingrédients…');
-    const r = await fetch(API + '?action=ingredients');
-    ING = await r.json();
+    // Chargement direct depuis DEMO_NUTRI — pas de fetch
+    splashProgress(10, 'Préparation des données…');
+    const demo = DEMO_NUTRI;
+
+    ING = cloneDemo(demo.ingredients || []);
     ingredientsFiltered = [...ING];
     ING.forEach(ing => { if (ing.type === 'compose' && ing.sous_ingredients?.length) RECETTE_SUBS[ing.id] = ing.sous_ingredients; });
 
-    splashProgress(45, 'Chargement des données…');
-    try {
-      const [rf, ra] = await Promise.all([fetch(API + '?action=fournisseurs'), fetch(API + '?action=allergenes')]);
-      window.FOURNISSEURS = await rf.json();
-      window.ALLERGENES   = await ra.json();
-      FOURN = [...window.FOURNISSEURS];
-      fournFiltered = [...FOURN];
-    } catch(e) { window.FOURNISSEURS = []; window.ALLERGENES = []; }
+    window.FOURNISSEURS = cloneDemo(demo.fournisseurs || []);
+    window.ALLERGENES   = cloneDemo(demo.allergenes || []);
+    FOURN = [...window.FOURNISSEURS];
+    fournFiltered = [...FOURN];
 
-    splashProgress(65, 'Chargement des catégories…');
-    await loadCategories();   // ← charge depuis le Sheets
+    CATEGORIES_DATA = cloneDemo(demo.categories || []);
+    CATEGORIES = [...new Set(CATEGORIES_DATA.map(c => c.nom).filter(Boolean))].sort();
 
-    splashProgress(80, 'Chargement des recettes…');
-    renderIngredientsList(); renderFournisseursList();await      loadRessources();
-    await loadRecettes();
-    if (hasModuleAccess('reception')) await loadReceptions();
-    if (hasModuleAccess('production')) await loadProductions();
+    RESSOURCES = cloneDemo(demo.resources || {humain:[],energie:[],emballages:[]});
 
-  splashProgress(100, 'Prêt !');
+    splashProgress(35, 'Préparation des interfaces…');
+    renderIngredientsList();
+    renderFournisseursList();
+
+    const recettesData = demo.recettes || [];
+    if (Array.isArray(recettesData)) {
+      RECETTES = cloneDemo(recettesData);
+      recettesFiltered = [...RECETTES];
+      RECETTES.forEach(rec => { if (rec.categorie && !CATEGORIES.includes(rec.categorie)) CATEGORIES.push(rec.categorie); });
+      CATEGORIES.sort();
+      renderRecettesList();
+      refreshCategorieSelects();
+      // refreshPlanningRecipeSelect est dans un autre <script>, typeof evite le ReferenceError
+      if (typeof refreshPlanningRecipeSelect === 'function') refreshPlanningRecipeSelect();
+      refreshProductionRecipeSelect();
+      const el = document.getElementById('recetteCount');
+      if (el) el.textContent = RECETTES.length + ' recette' + (RECETTES.length > 1 ? 's' : '');
+    } else {
+      RECETTES = []; recettesFiltered = [];
+    }
+
+    splashProgress(60, 'Chargement des modules…');
+    const modulePromises = [];
+    if (hasModuleAccess('reception')) modulePromises.push(loadReceptions());
+    if (hasModuleAccess('production')) modulePromises.push(loadProductions());
+    await Promise.all(modulePromises);
+
+    splashProgress(100, 'Prêt !');
     document.getElementById('statusDot').className = 'badge badge-green';
     document.getElementById('statusDot').textContent = '🟢 Connecté';
     setTimeout(() => {
       hideSplash();
       applyRoleRestrictions();
       applyAbonnementRestrictions();
-    if (hasModuleAccess('equipe')) {
+      if (hasModuleAccess('equipe')) {
         const cards = document.querySelector('.home-cards');
         if (cards && !document.getElementById('homeCardEquipe')) {
           const card = document.createElement('div');
           card.className = 'home-card';
           card.id = 'homeCardEquipe';
-          card.innerHTML = `
-            <div class="home-card-icon">👥</div>
-            <div class="home-card-title">Équipe</div>
-            <div class="home-card-desc">Gérez les accès de vos collaborateurs</div>
-            <div class="home-card-arrow">→</div>`;
+          card.innerHTML = '<div class="home-card-icon">👥</div><div class="home-card-title">Équipe</div><div class="home-card-desc">Gérez les accès de vos collaborateurs</div><div class="home-card-arrow">→</div>';
           card.addEventListener('click', () => showUserList());
           cards.appendChild(card);
         }
@@ -2315,9 +2335,9 @@ async function init() {
       showPage('accueil');
     }, 400);
   } catch(e) {
-    splashProgress(100, 'Erreur de connexion');
-    document.getElementById('splashMsg').style.color = 'var(--danger)';
-    document.getElementById('statusDot').textContent = '⚠️ Erreur API';
+    splashProgress(100, "Erreur de connexion");
+    document.getElementById("splashMsg").style.color = "var(--danger)";
+    document.getElementById("statusDot").textContent = "⚠️ Erreur API";
     setTimeout(hideSplash, 2000);
   }
 }
@@ -5962,7 +5982,7 @@ savePlanningTask = savePlanningTaskRemote;
 </div>
 <!-- PWA BANNER -->
 <div id="pwaBanner">
-  <img class="pwa-logo" src="https://raw.githubusercontent.com/JaySolution/EasyNutri/main/enlog.png" alt="EasyNutri" onerror="this.style.display='none'">
+  <div class="pwa-logo" style="width:48px;height:48px;border-radius:14px;background:linear-gradient(135deg,#67b54b,#1f8c88);display:flex;align-items:center;justify-content:center;font-size:24px;color:white;font-weight:bold;flex-shrink:0;box-shadow:0 4px 12px rgba(31,140,136,0.2);overflow:hidden">🍃</div>
   <div class="pwa-text">
     <div class="pwa-title">Installer EasyNutri</div>
     <div class="pwa-sub" id="pwaBannerSub">Accédez à l'app depuis votre écran d'accueil</div>
@@ -5974,7 +5994,7 @@ savePlanningTask = savePlanningTaskRemote;
 <!-- GUIDE IOS -->
 <div id="iosGuide">
   <div class="ios-title">
-    <img src="https://raw.githubusercontent.com/JaySolution/EasyNutri/main/enlog.png" style="width:32px;height:32px;border-radius:10px;object-fit:cover" onerror="this.style.display='none'">
+    <span style="display:inline-flex;width:32px;height:32px;border-radius:10px;background:linear-gradient(135deg,#67b54b,#1f8c88);align-items:center;justify-content:center;font-size:16px;color:white;font-weight:bold;flex-shrink:0;overflow:hidden">🍃</span>
     Installer EasyNutri sur iPhone / iPad
   </div>
   <div class="ios-step"><div class="num">1</div><span>Appuyez sur <strong>le bouton Partager</strong> ⬆️ en bas de Safari</span></div>
@@ -5985,7 +6005,7 @@ savePlanningTask = savePlanningTaskRemote;
 
 <script>
 (function() {
-  const LOGO = 'https://raw.githubusercontent.com/JaySolution/EasyNutri/main/enlog.png';
+  const LOGO = 'data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%20100%20100%22%3E%3Cdefs%3E%3ClinearGradient%20id%3D%22g%22%20x1%3D%220%22%20y1%3D%220%22%20x2%3D%22100%22%20y2%3D%22100%22%3E%3Cstop%20offset%3D%220%22%20stop-color%3D%22%2367b54b%22%2F%3E%3Cstop%20offset%3D%22100%22%20stop-color%3D%22%231f8c88%22%2F%3E%3C%2FlinearGradient%3E%3C%2Fdefs%3E%3Crect%20width%3D%22100%22%20height%3D%22100%22%20rx%3D%2222%22%20fill%3D%22url(%23g)%22%2F%3E%3Ctext%20x%3D%2250%22%20y%3D%2280%22%20text-anchor%3D%22middle%22%20font-size%3D%2270%22%3E%F0%9F%8D%83%3C%2Ftext%3E%3C%2Fsvg%3E';
   const DISMISSED_KEY = 'easynutri_pwa_dismissed';
 
 if ('serviceWorker' in navigator) {
@@ -7064,7 +7084,10 @@ function initStockPage() {
     div.id = 'pageStock';
     div.innerHTML = `
       <div class="page-header">
-        <div class="page-title"><span>📦</span> Gestion des Stocks</div>
+        <div>
+          <button class="btn-back-home" onclick="showPage('accueil')" title="Retour à l'accueil">← Accueil</button>
+          <div class="page-title"><span>📦</span> Gestion des Stocks</div>
+        </div>
       </div>
       <div class="stock-alert-bar" id="stockStatCards">
         <div class="stat-card"><div class="stat-num">—</div><div class="stat-label">Produits</div></div>
@@ -7305,11 +7328,18 @@ function initDashboardPage() {
     const main = document.querySelector('.main');
     if (!main) return;
     const div = document.createElement('div');
-    div.id = 'pageTableaudebord';
-    div.innerHTML = `
-      <div class="page-header"><div class="page-title"><span>📈</span> Tableau de Bord</div></div>
+    div.id = 'pageTableaudebord';    div.innerHTML = `
+      <div class="page-header">
+        <div>
+          <button class="btn-back-home" onclick="showPage('accueil')" title="Retour à l'accueil">← Accueil</button>
+          <div class="page-title"><span>📈</span> Tableau de Bord</div>
+        </div>
+      </div>
+
       <div class="card mb-3">
-        <div class="card-header"><div class="card-title">🔍 Filtres</div></div>
+        <div class="card-header">
+          <div class="card-title">🔍 Filtres</div>
+        </div>
         <div class="card-body">
           <div style="display:flex;flex-wrap:wrap;gap:12px;align-items:end">
             <div><label style="font-size:11px;font-weight:600;color:var(--text3);display:block;margin-bottom:4px">Période</label><select class="form-select" id="dashYear" onchange="renderDashboardCharts()" style="width:auto"><option value="">Toutes les années</option></select></div>
