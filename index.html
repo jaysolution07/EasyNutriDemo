@@ -1945,11 +1945,30 @@ const DEMO_NUTRI = (() => {
     { alim_code:'20003', alim_nom_fr:'Semoule complete cuite', energie_kcal:124, proteines_g:4.1, glucides_g:23.0, sucres_g:0.3, lipides_g:0.8, Ags:0.2, sel_g:0.01, fibres_g:3.9 }
   ];
 
+  // Planning de demo : dates relatives a aujourd hui pour remplir la semaine en cours
+  const dayISO = offset => {
+    const d = new Date();
+    d.setHours(12, 0, 0, 0);
+    d.setDate(d.getDate() + offset);
+    return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+  };
+
   const planning = [
-    { id:'PLAN-001', date:'2026-04-15', heure:'07:00', heure_fin:'09:30', type:'production', statut:'planifie', titre:'Production lasagnes legumes', recette:'REC-002', quantite:'48 portions', note:'Sortie cellule avant 10h.' },
-    { id:'PLAN-002', date:'2026-04-15', heure:'10:00', heure_fin:'11:00', type:'controle', statut:'en_cours', titre:'Controle etiquetage semaine 16', recette:'', quantite:'12 references', note:'Verifier DLC et allergenes.' },
-    { id:'PLAN-003', date:'2026-04-16', heure:'08:00', heure_fin:'10:30', type:'production', statut:'planifie', titre:'Batch brownie noisette', recette:'REC-003', quantite:'36 barquettes', note:'Prevoir etiquette ronde 60 mm.' },
-    { id:'PLAN-004', date:'2026-04-17', heure:'14:00', heure_fin:'15:00', type:'livraison', statut:'planifie', titre:'Reception primeur du Sud', recette:'', quantite:'230 kg', note:'Legumes frais et herbes.' }
+    { id:'PLAN-001', date:dayISO(-2), heure:'07:00', heure_fin:'09:30', type:'Production', statut:'Fait', titre:'Production lasagnes de legumes', recette:'Lasagnes de legumes', quantite:'48 portions', notes:'Sortie cellule avant 10h.' },
+    { id:'PLAN-002', date:dayISO(-2), heure:'10:00', heure_fin:'11:00', type:'Test', statut:'Fait', titre:'Controle etiquetage semaine 45', recette:'', quantite:'12 references', notes:'Verifier DLC et allergenes.' },
+    { id:'PLAN-003', date:dayISO(-1), heure:'08:00', heure_fin:'10:30', type:'Production', statut:'Fait', titre:'Batch brownie noisette', recette:'Brownie noisette', quantite:'36 barquettes', notes:'Prevoir etiquette ronde 60 mm.' },
+    { id:'PLAN-004', date:dayISO(-1), heure:'14:00', heure_fin:'15:00', type:'Livraison', statut:'Fait', titre:'Reception primeur du Sud', recette:'', quantite:'230 kg', notes:'Legumes frais et herbes.' },
+    { id:'PLAN-005', date:dayISO(0), heure:'07:30', heure_fin:'09:30', type:'Production', statut:'A faire', titre:'Production salade quinoa poulet', recette:'Salade quinoa poulet', quantite:'40 portions', notes:'Quinoa a lancer la veille.' },
+    { id:'PLAN-006', date:dayISO(0), heure:'10:00', heure_fin:'11:00', type:'Test', statut:'A faire', titre:'Test tenue sauce tomate maison', recette:'', quantite:'3 echantillons', notes:'Mesure pH et degustation.' },
+    { id:'PLAN-007', date:dayISO(0), heure:'14:00', heure_fin:'16:00', type:'Production', statut:'A faire', titre:'Production wrap poulet parmesan', recette:'Wrap poulet parmesan', quantite:'60 pieces', notes:'Prevoir barquettes 750g.' },
+    { id:'PLAN-008', date:dayISO(1), heure:'08:00', heure_fin:'09:00', type:'Livraison', statut:'A faire', titre:'Reception Maison Italiana', recette:'', quantite:'18 colis', notes:'Controler la temperature frigo.' },
+    { id:'PLAN-009', date:dayISO(1), heure:'09:30', heure_fin:'12:00', type:'Production', statut:'A faire', titre:'Production lasagnes de legumes', recette:'Lasagnes de legumes', quantite:'72 portions', notes:'Deux tours de four.' },
+    { id:'PLAN-010', date:dayISO(1), heure:'15:00', heure_fin:'16:00', type:'Autre', statut:'A faire', titre:'Nettoyage cellule de refroidissement', recette:'', quantite:'1 poste', notes:'Plan de maitrise sanitaire.' },
+    { id:'PLAN-011', date:dayISO(2), heure:'08:00', heure_fin:'10:00', type:'Production', statut:'A faire', titre:'Production brownie noisette', recette:'Brownie noisette', quantite:'48 barquettes', notes:'' },
+    { id:'PLAN-012', date:dayISO(2), heure:'11:00', heure_fin:'12:00', type:'Test', statut:'A faire', titre:'Test DLC 5 jours brownie', recette:'', quantite:'6 echantillons', notes:'Suivi J+1 a J+5.' },
+    { id:'PLAN-013', date:dayISO(3), heure:'07:00', heure_fin:'10:00', type:'Production', statut:'A faire', titre:'Production salade quinoa poulet', recette:'Salade quinoa poulet', quantite:'55 portions', notes:'Commande client Le Comptoir.' },
+    { id:'PLAN-014', date:dayISO(4), heure:'09:00', heure_fin:'10:30', type:'Livraison', statut:'A faire', titre:'Livraison Le Comptoir', recette:'', quantite:'3 cartons', notes:'Depart 9h, quai 2.' },
+    { id:'PLAN-015', date:dayISO(7), heure:'08:00', heure_fin:'11:00', type:'Production', statut:'A faire', titre:'Production wrap poulet parmesan', recette:'Wrap poulet parmesan', quantite:'80 pieces', notes:'Semaine suivante.' }
   ];
 
   const receptions = [
@@ -2155,6 +2174,144 @@ function demoJsonResponse(data) {
   };
 }
 
+function demoNextId(prefix, items, idKey = 'id', pad = 3) {
+  const head = prefix + '-';
+  let max = 0;
+  (items || []).forEach(item => {
+    const raw = String((item && item[idKey]) || '');
+    const tail = raw.startsWith(head) ? raw.slice(head.length) : '';
+    if (tail && !isNaN(Number(tail))) max = Math.max(max, Number(tail));
+  });
+  return head + String(max + 1).padStart(pad, '0');
+}
+
+function demoNum(value) { return Number(value) || 0; }
+
+function demoSaveIngredient(payload) {
+  const list = DEMO_NUTRI.ingredients;
+  const id = String(payload.id || '').trim();
+  const data = {
+    nom: payload.nom || '',
+    type: payload.type === 'compose' ? 'compose' : 'simple',
+    energie_kjoules: demoNum(payload.energie_kjoules),
+    energie_kcal: demoNum(payload.energie_kcal),
+    proteines_g: demoNum(payload.proteines_g),
+    glucides_g: demoNum(payload.glucides_g),
+    sucres_g: demoNum(payload.sucres_g),
+    lipides_g: demoNum(payload.lipides_g),
+    Ags: demoNum(payload.Ags),
+    sel_g: demoNum(payload.sel_g),
+    fibres_g: demoNum(payload.fibres_g),
+    allergenes: payload.allergenes || '',
+    fournisseur: payload.fournisseur || '',
+    dlc_type: payload.dlc_type || 'DDM',
+    prix_kg: demoNum(payload.prix_kg),
+    unite: payload.unite || 'kg',
+    equiv_poids_g: demoNum(payload.equiv_poids_g) || 1000
+  };
+  if (data.type === 'compose') data.sous_ingredients = Array.isArray(payload.compose) ? payload.compose : [];
+  if (id) {
+    const idx = list.findIndex(item => String(item.id) === id);
+    if (idx >= 0) { list[idx] = { ...list[idx], ...data, id }; return list[idx]; }
+  }
+  const created = { id: demoNextId('ING', list, 'id', 3), ...data };
+  list.push(created);
+  return created;
+}
+
+function demoSaveFournisseur(payload) {
+  const list = DEMO_NUTRI.fournisseurs;
+  const id = String(payload.id || '').trim();
+  const data = {
+    nom: payload.nom || '',
+    contact: payload.contact || '',
+    email: payload.email || '',
+    telephone: payload.telephone || payload.tel || '',
+    agrement: payload.agrement || ''
+  };
+  if (id) {
+    const idx = list.findIndex(item => String(item.id) === id);
+    if (idx >= 0) { list[idx] = { ...list[idx], ...data, id }; return list[idx]; }
+  }
+  const created = { id: demoNextId('FOU', list, 'id', 2), ...data };
+  list.push(created);
+  return created;
+}
+
+function demoSavePlanning(payload) {
+  const list = DEMO_NUTRI.planning;
+  const id = String(payload.id || '').trim();
+  const data = {
+    date: payload.date || '',
+    heure: payload.heure || '',
+    heure_fin: payload.heure_fin || payload.heureFin || '',
+    type: payload.type || 'Production',
+    statut: payload.statut || 'À faire',
+    titre: payload.titre || '',
+    recette: payload.recette || '',
+    quantite: payload.quantite || '',
+    notes: payload.notes || payload.note || ''
+  };
+  if (id) {
+    const idx = list.findIndex(item => String(item.id) === id);
+    if (idx >= 0) { list[idx] = { ...list[idx], ...data, id }; return list[idx]; }
+  }
+  const created = { id: demoNextId('PLAN', list, 'id', 3), ...data };
+  list.push(created);
+  return created;
+}
+
+function demoReceptionTempLabel(type) {
+  const t = String(type || '').toLowerCase();
+  if (t.includes('surg')) return '≤ -16°C';
+  if (t.includes('frais')) return '≤ 4°C';
+  return '';
+}
+
+function demoSaveReception(payload) {
+  const list = DEMO_NUTRI.receptions;
+  const lignes = Array.isArray(payload.lignes) ? payload.lignes : [];
+  const exists = String(payload.id_bl || '').trim();
+  const idBl = exists || demoNextId('BL-DEMO', list, 'id_bl', 3);
+  if (exists) {
+    for (let i = list.length - 1; i >= 0; i--) {
+      if (String(list[i].id_bl) === exists) list.splice(i, 1);
+    }
+  }
+  lignes.forEach((line, idx) => {
+    list.push({
+      id_bl: idBl,
+      id_ligne: idBl + '-' + (idx + 1),
+      date: payload.date || '',
+      fournisseur: payload.fournisseur || '',
+      numero_bl: payload.numero_bl || '',
+      type_produit: line.type_produit || 'Frais',
+      produit: line.produit || '',
+      ingredient_id: line.ingredient_id || '',
+      lot: line.lot || '',
+      dlc_ddm_type: line.dlc_ddm_type || 'DLC',
+      dlc_ddm: line.dlc_ddm || '',
+      quantite: line.quantite || '',
+      unite: line.unite || '',
+      temperature: line.temperature || '',
+      temperature_cible: demoReceptionTempLabel(line.type_produit),
+      conformite: line.conformite || 'Conforme',
+      action: line.action || '',
+      regle: line.regle || 'Non-réglé',
+      prix: line.prix || ''
+    });
+  });
+  return { ok: true, id_bl: idBl };
+}
+
+function demoDeleteReception(idBl) {
+  const list = DEMO_NUTRI.receptions;
+  for (let i = list.length - 1; i >= 0; i--) {
+    if (String(list[i].id_bl) === String(idBl)) list.splice(i, 1);
+  }
+  return { ok: true };
+}
+
 function handleDemoFetch(url, init = {}) {
   const method = String(init.method || 'GET').toUpperCase();
   const normalized = url.startsWith(DEMO_API) ? url.replace(DEMO_API, 'https://demo.local') : url;
@@ -2177,7 +2334,36 @@ function handleDemoFetch(url, init = {}) {
 
   if (!url.startsWith(DEMO_API)) return null;
 
-  if (method === 'POST') return Promise.resolve(demoJsonResponse({ ok:true, action:body.action || '' }));
+  if (method === 'POST') {
+    const payload = { ...body, action: body.action || action };
+    if (payload.action === 'saveIngredient') return Promise.resolve(demoJsonResponse({ ok:true, ...demoSaveIngredient(payload) }));
+    if (payload.action === 'saveFournisseur') return Promise.resolve(demoJsonResponse({ ok:true, ...demoSaveFournisseur(payload) }));
+    if (payload.action === 'savePlanning') return Promise.resolve(demoJsonResponse({ ok:true, ...demoSavePlanning(payload) }));
+    if (payload.action === 'saveReception') return Promise.resolve(demoJsonResponse(demoSaveReception(payload)));
+    return Promise.resolve(demoJsonResponse({ ok:true, action: payload.action || '' }));
+  }
+  if (action === 'deleteIngredient') {
+    const id = parsed.searchParams.get('id') || '';
+    DEMO_NUTRI.ingredients = DEMO_NUTRI.ingredients.filter(item => String(item.id) !== id);
+    Object.keys(DEMO_NUTRI.recetteDetails).forEach(key => {
+      DEMO_NUTRI.recetteDetails[key] = DEMO_NUTRI.recetteDetails[key].filter(row => String(row.ingredient) !== id);
+    });
+    return Promise.resolve(demoJsonResponse({ ok:true }));
+  }
+  if (action === 'deleteFournisseur') {
+    const id = parsed.searchParams.get('id') || '';
+    const target = DEMO_NUTRI.fournisseurs.find(item => String(item.id) === id);
+    DEMO_NUTRI.fournisseurs = DEMO_NUTRI.fournisseurs.filter(item => String(item.id) !== id);
+    if (target) {
+      DEMO_NUTRI.ingredients.forEach(ing => { if (ing.fournisseur === target.nom) ing.fournisseur = ''; });
+    }
+    return Promise.resolve(demoJsonResponse({ ok:true }));
+  }
+  if (action === 'deletePlanning') {
+    const id = parsed.searchParams.get('id') || '';
+    DEMO_NUTRI.planning = DEMO_NUTRI.planning.filter(item => String(item.id) !== id);
+    return Promise.resolve(demoJsonResponse({ ok:true }));
+  }
   if (action === 'ingredients') return Promise.resolve(demoJsonResponse(DEMO_NUTRI.ingredients));
   if (action === 'fournisseurs') return Promise.resolve(demoJsonResponse(DEMO_NUTRI.fournisseurs));
   if (action === 'allergenes') return Promise.resolve(demoJsonResponse(DEMO_NUTRI.allergenes));
@@ -2219,17 +2405,14 @@ function applyDemoReadOnlyUI() {
   if (topbarRight && !document.getElementById('demoNutriBadge')) {
     const badge = document.createElement('div');
     badge.id = 'demoNutriBadge';
-    badge.textContent = 'Mode demo - donnees simulees';
+    badge.textContent = 'Mode demo - ajouts simules';
     badge.style.cssText = 'padding:7px 10px;border-radius:999px;background:#fff4db;border:1px solid #f6d28b;color:#92400e;font-size:11px;font-weight:700;';
     topbarRight.insertBefore(badge, topbarRight.firstChild);
   }
   const hidePatterns = [
-    'openModalRecette','openModalIngredient','openModalFournisseur','openModalCategories','openModalCreateUser',
-    'save()','removeRecette','saveIngredient','deleteIngredient','createUser()','deleteUser()','saveFournisseurLocal',
-    'deleteFournisseurLocal','addIngredient','addComposeIng','printFT',
-    'saveRessource','deleteRessource','openModalRessource',
-    'openModalPlanning','savePlanningTask','deletePlanningTask','deletePlanningTaskRemote',
-    'newReceptionBL','addReceptionLine','saveReceptionBL','deleteReceptionBL','editReceptionBL','purgeProductions'
+    'openModalRecette','openModalCategories','openModalCreateUser',
+    'save()','removeRecette','createUser()','deleteUser()','addIngredient',
+    'printFT','saveRessource','deleteRessource','openModalRessource','purgeProductions'
   ];
   document.querySelectorAll('button,[role="button"]').forEach(el => {
     const click = el.getAttribute('onclick') || '';
@@ -2241,7 +2424,7 @@ function applyDemoReadOnlyUI() {
     el.disabled = true;
     el.style.opacity = '0.8';
   });
-  ['modalIngredient','modalFournisseur','modalCreateUser','modalRessource','modalRecette','modalPlanning'].forEach(id => {
+  ['modalCreateUser','modalRessource','modalRecette'].forEach(id => {
     document.querySelectorAll(`#${id} input, #${id} textarea, #${id} select`).forEach(el => {
       el.disabled = true;
       el.style.opacity = '0.8';
@@ -5447,9 +5630,15 @@ function apiJsonp(action, params = {}) {
         return Promise.resolve(cloneDemo(DEMO_NUTRI.receptions || []));
       case 'productions':
         return Promise.resolve(cloneDemo(DEMO_NUTRI.productions || []));
-      case 'saveReceptionJsonp':
+      case 'saveReceptionJsonp': {
+        let payload = {};
+        try { payload = JSON.parse(params.payload || '{}'); } catch (e) { payload = {}; }
+        return Promise.resolve(demoSaveReception(payload));
+      }
       case 'deleteReceptionJsonp':
+        return Promise.resolve(demoDeleteReception(params.id_bl));
       case 'purgeProductionsJsonp':
+        DEMO_NUTRI.productions = [];
         return Promise.resolve({ ok:true });
       default:
         break;
